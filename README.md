@@ -3,7 +3,7 @@ A basic object-oriented abstraction for CSV and binary database files.
 
 This is part of a school project. It still has multiple bugs and needs further testing.
 
-The database structure works as follows:
+The database folder structure works as follows:
   - Database Name
     - Table Name(.table/.csv)
     - Other Table Name(.table/.csv)
