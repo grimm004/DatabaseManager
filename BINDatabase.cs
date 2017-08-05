@@ -20,7 +20,7 @@ namespace DatabaseManager
         
         public override Table GetTable(string tableName)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table;
+            foreach (Table table in tables) if (table.Name == tableName) return table;
             return null;
         }
 
@@ -32,71 +32,71 @@ namespace DatabaseManager
 
         public override void DeleteTable(string tableName)
         {
-            foreach (Table table in tables) if (table.name == tableName) tables.Remove(table);
+            foreach (Table table in tables) if (table.Name == tableName) tables.Remove(table);
         }
         
         public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
             return null;
         }
 
         public override Record GetRecordByID(string tableName, int ID)
         {
-            foreach (Table table in tables) if (table.name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
+            foreach (Table table in tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
             return null;
         }
 
         public override Record[] GetRecords(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.GetRecords(conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
             return null;
         }
 
         public override Record GetRecord(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.GetRecord(conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecord(conditionField, conditionValue);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, Record record, object[] values)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(record, values);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, values);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, Record record, string fieldString, object[] value)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(record, fieldString, value);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, fieldString, value);
             return null;
         }
 
         public override Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecords(fieldString, values, conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecords(fieldString, values, conditionField, conditionValue);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, int ID, object[] values)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(ID, values);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(ID, values);
             return null;
         }
 
         public override void DeleteRecord(string tableName, Record record)
         {
-            foreach (Table table in tables) if (table.name == tableName) table.DeleteRecord(record);
+            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(record);
         }
 
         public override void DeleteRecord(string tableName, int ID)
         {
-            foreach (Table table in tables) if (table.name == tableName) table.DeleteRecord(ID);
+            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(ID);
         }
 
         public override string ToString()
         {
             string tableList = "";
-            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.name);
+            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.Name);
             if (TableCount > 0) tableList = tableList.Remove(tableList.Length - 2, 2);
             return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
@@ -107,8 +107,6 @@ namespace DatabaseManager
     #region Table
     public class BINTable : Table
     {
-        private List<BINRecord> recordCache;
-
         public int recordsPerChunk = 10;
 
         private bool isNewFile;
@@ -117,17 +115,17 @@ namespace DatabaseManager
         public override int RecordCount { get { return recordCount; } }
 
         public BINTable(string fileName, string name, BINFields fields) : base(fileName, name, fields)
-        { CurrentID = 0; recordCache = new List<BINRecord>(); isNewFile = true; }
+        { CurrentID = 0; RecordCache = new List<Record>(); isNewFile = true; }
 
         public BINTable(string fileName) : base(fileName)
         { isNewFile = false; }
 
         public override void LoadTable()
         {
-            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
-                recordCache = new List<BINRecord>();
-                fields = new BINFields(reader);
+                RecordCache = new List<Record>();
+                Fields = new BINFields(reader);
                 //int offset = fields.Size;
                 //while (offset < (int)reader.BaseStream.Length)
                 //{
@@ -137,6 +135,22 @@ namespace DatabaseManager
                 //}
             }
             UpdateProperties();
+        }
+
+        public override Record[] GetRecords()
+        {
+            List<Record> results = new List<Record>();
+
+            using (var file = File.OpenRead(FileName))
+            {
+                long chunkSize = recordsPerChunk * Fields.RecordSize;
+                file.Position = Fields.Size;
+                int bytesRead;
+                var buffer = new byte[chunkSize];
+                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0) AnalyseChunk(ref results, buffer);
+            }
+
+            return results.ToArray();
         }
 
         public override Record[] GetRecords(string conditionField, object conditionValue)
@@ -175,10 +189,10 @@ namespace DatabaseManager
             //}
             List<Record> results = new List<Record>();
 
-            using (var file = File.OpenRead(fileName))
+            using (var file = File.OpenRead(FileName))
             {
-                long chunkSize = recordsPerChunk * fields.RecordSize;
-                file.Position = fields.Size;
+                long chunkSize = recordsPerChunk * Fields.RecordSize;
+                file.Position = Fields.Size;
                 int bytesRead;
                 var buffer = new byte[chunkSize];
                 while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0) AnalyseChunk(ref results, buffer, conditionField, conditionValue);
@@ -190,13 +204,13 @@ namespace DatabaseManager
         private void AnalyseChunk(ref List<Record> resultList, byte[] chunk, string conditionField, object conditionValue)
         {
             int position = 0;
-            int fieldID = fields.GetFieldID(conditionField);
-            int fieldOffset = sizeof(int) + fields.fieldOffsets[fieldID];
-            for (int i = 0; i < chunk.Length; i += fields.RecordSize)
+            int fieldID = Fields.GetFieldID(conditionField);
+            int fieldOffset = sizeof(int) + Fields.fieldOffsets[fieldID];
+            for (int i = 0; i < chunk.Length; i += Fields.RecordSize)
             {
                 position = i + fieldOffset;
                 bool valid = false;
-                switch (fields.fieldTypes[fieldID])
+                switch (Fields.fieldTypes[fieldID])
                 {
                     case Datatype.Number:
                         valid = (float)conditionValue == BitConverter.ToSingle(chunk, position);
@@ -217,23 +231,28 @@ namespace DatabaseManager
                 if (valid)
                 {
                     position = i;
-                    resultList.Add(new BINRecord(chunk, (BINFields)fields, position));
+                    resultList.Add(new BINRecord(chunk, (BINFields)Fields, position));
                 }
             }
         }
 
+        private void AnalyseChunk(ref List<Record> resultList, byte[] chunk)
+        {
+            for (int i = 0; i < chunk.Length; i += Fields.RecordSize) resultList.Add(new BINRecord(chunk, (BINFields)Fields, i));
+        }
+
         public override Record GetRecord(string conditionField, object conditionValue)
         {
-            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
-                int fieldID = fields.GetFieldID(conditionField);
+                int fieldID = Fields.GetFieldID(conditionField);
                 List<Record> resultRecords = new List<Record>();
-                long fieldOffset = sizeof(int) + fields.fieldOffsets[fieldID];
-                for (long i = fields.Size; i < reader.BaseStream.Length; i += fields.RecordSize)
+                long fieldOffset = sizeof(int) + Fields.fieldOffsets[fieldID];
+                for (long i = Fields.Size; i < reader.BaseStream.Length; i += Fields.RecordSize)
                 {
                     reader.BaseStream.Position = i + fieldOffset;
                     bool valid = false;
-                    switch (fields.fieldTypes[fieldID])
+                    switch (Fields.fieldTypes[fieldID])
                     {
                         case Datatype.Number:
                             valid = (float)conditionValue == (float)reader.ReadSingle();
@@ -250,7 +269,7 @@ namespace DatabaseManager
                     if (valid)
                     {
                         reader.BaseStream.Position = i;
-                        return new BINRecord(reader, (BINFields)fields);
+                        return new BINRecord(reader, (BINFields)Fields);
                     }
                 }
 
@@ -260,7 +279,7 @@ namespace DatabaseManager
 
         public override Record GetRecordByID(int ID)
         {
-            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
                 //long tableSize = reader.BaseStream.Length;
                 //for (int i = fields.Size; i < tableSize; i += fields.RecordSize)
@@ -273,11 +292,11 @@ namespace DatabaseManager
                 //        return new BINRecord(reader, (BINFields)fields);
                 //    }
                 //}
-                int pos = fields.Size + (fields.RecordSize * ID);
+                int pos = Fields.Size + (Fields.RecordSize * ID);
                 if (pos < reader.BaseStream.Length)
                 {
                     reader.BaseStream.Position = pos;
-                    return new BINRecord(reader, (BINFields)fields);
+                    return new BINRecord(reader, (BINFields)Fields);
                 }
             }
             return null;
@@ -291,8 +310,8 @@ namespace DatabaseManager
                 (ifNotExists && conditionField != null && conditionValue != null
                     && !RecordExists(conditionField, conditionValue)))
             {
-                BINRecord newRecord = new BINRecord(values, recordCount++, (BINFields)fields);
-                recordCache.Add(newRecord);
+                BINRecord newRecord = new BINRecord(values, recordCount++, (BINFields)Fields);
+                RecordCache.Add(newRecord);
                 return newRecord;
             }
             return null;
@@ -301,7 +320,7 @@ namespace DatabaseManager
         public override Record UpdateRecord(Record record, object[] values)
         {
             MarkForUpdate();
-            for (int i = 0; i < FieldCount; i++) record.SetValue(fields.fieldNames[i], values[i]);
+            for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.fieldNames[i], values[i]);
             return record;
         }
 
@@ -327,7 +346,7 @@ namespace DatabaseManager
         public override void DeleteRecord(Record record)
         {
             MarkForUpdate();
-            records.Remove(record);
+            base.RecordCache.Remove(record);
         }
 
         public override void DeleteRecord(int ID)
@@ -340,31 +359,31 @@ namespace DatabaseManager
 
         public void UpdateProperties()
         {
-            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
-                recordCount = (int)((reader.BaseStream.Length - (long)fields.Size) / fields.RecordSize);
+                recordCount = (int)((reader.BaseStream.Length - (long)Fields.Size) / Fields.RecordSize);
                 CurrentID = recordCount - 1;
             }
         }
 
         public override void MarkForUpdate()
         {
-            edited = true;
+            Edited = true;
         }
 
         public override void Save()
         {
-            if (edited)
+            if (Edited)
             {
-                edited = false;
-                using (BinaryWriter writer = new BinaryWriter(File.Open(fileName, FileMode.Append)))
+                Edited = false;
+                using (BinaryWriter writer = new BinaryWriter(File.Open(FileName, FileMode.Append)))
                 {
                     writer.BaseStream.Position = writer.BaseStream.Length;
-                    if (isNewFile) ((BINFields)fields).WriteManifestBytes(writer);
-                    foreach (BINRecord record in recordCache) record.WriteFileBytes(writer);
+                    if (isNewFile) ((BINFields)Fields).WriteManifestBytes(writer);
+                    foreach (BINRecord record in RecordCache) record.WriteFileBytes(writer);
                 }
                 isNewFile = false;
-                recordCache = new List<BINRecord>();
+                RecordCache = new List<Record>();
                 UpdateProperties();
             }
         }

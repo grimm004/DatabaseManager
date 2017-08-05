@@ -18,7 +18,7 @@ namespace Ordering
             orderDatabase.CreateTable("Orders", new CSVFields("CustomerID:number,CardID:number"));
             orderDatabase.CreateTable("CreditCards", new CSVFields("Name:text,MainNumber:text,ExpiryDate:text,SecurityCode:text"));
             orderDatabase.CreateTable("PurchasedItems", new CSVFields("OrderID:int,ItemID:int,Quantity:int"));
-            stockItemRecords = orderDatabase.GetTable("Items").records;
+            stockItemRecords = new List<Record>(orderDatabase.GetTable("Items").GetRecords());
             stockItems = new List<StockItem>();
             foreach (Record itemRecord in stockItemRecords)
             {

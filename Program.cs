@@ -7,22 +7,22 @@ namespace DatabaseManager
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Loading database...");
-            BINDatabase database = new BINDatabase("TestDatabase");
-            Console.WriteLine("Done!");
+            //Console.WriteLine("Loading database...");
+            //BINDatabase database = new BINDatabase("TestDatabase");
+            //Console.WriteLine("Done!");
             
-            Console.WriteLine("Starting timer...");
-            Stopwatch watch = Stopwatch.StartNew();
+            //Console.WriteLine("Starting timer...");
+            //Stopwatch watch = Stopwatch.StartNew();
 
-            //GenerateRandomRecords(database, "testTable3", 5000000, true);
+            ////GenerateRandomRecords(database, "testTable3", 5000000, true);
 
-            foreach (Record record in database.GetRecords("testTable2", "MyRecordInteger", 3)) Console.WriteLine(record);
+            //foreach (Record record in database.GetRecords("testTable2", "MyRecordInteger", 3)) Console.WriteLine(record);
 
-            watch.Stop();
+            //watch.Stop();
             
-            Console.WriteLine("Done in " + watch.ElapsedMilliseconds + "ms.");
+            //Console.WriteLine("Done in " + watch.ElapsedMilliseconds + "ms.");
             
-            Console.ReadKey();
+            //Console.ReadKey();
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)

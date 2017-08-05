@@ -18,7 +18,7 @@ namespace DatabaseManager
         
         public override Table GetTable(string tableName)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table;
+            foreach (Table table in tables) if (table.Name == tableName) return table;
             return null;
         }
 
@@ -30,71 +30,71 @@ namespace DatabaseManager
 
         public override void DeleteTable(string tableName)
         {
-            foreach (Table table in tables) if (table.name == tableName) tables.Remove(table);
+            foreach (Table table in tables) if (table.Name == tableName) tables.Remove(table);
         }
         
         public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
             return null;
         }
 
         public override Record GetRecordByID(string tableName, int ID)
         {
-            foreach (Table table in tables) if (table.name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
+            foreach (Table table in tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
             return null;
         }
 
         public override Record GetRecord(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.GetRecords(conditionField, conditionValue)[0];
+            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue)[0];
             return null;
         }
 
         public override Record[] GetRecords(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.GetRecords(conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, Record record, object[] values)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(record, values);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, values);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, Record record, string fieldString, object[] value)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(record, fieldString, value);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, fieldString, value);
             return null;
         }
 
         public override Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecords(fieldString, values, conditionField, conditionValue);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecords(fieldString, values, conditionField, conditionValue);
             return null;
         }
 
         public override Record UpdateRecord(string tableName, int ID, object[] values)
         {
-            foreach (Table table in tables) if (table.name == tableName) return table.UpdateRecord(ID, values);
+            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(ID, values);
             return null;
         }
 
         public override void DeleteRecord(string tableName, Record record)
         {
-            foreach (Table table in tables) if (table.name == tableName) table.DeleteRecord(record);
+            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(record);
         }
 
         public override void DeleteRecord(string tableName, int ID)
         {
-            foreach (Table table in tables) if (table.name == tableName) table.DeleteRecord(ID);
+            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(ID);
         }
 
         public override string ToString()
         {
             string tableList = "";
-            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.name);
+            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.Name);
             if (TableCount > 0) tableList = tableList.Remove(tableList.Length - 2, 2);
             return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
@@ -110,32 +110,33 @@ namespace DatabaseManager
         public CSVTable(string fileName) : base(fileName)
         { }
         
-        public override int RecordCount { get { return records.Count; } }
+        public override int RecordCount { get { return RecordCache.Count; } }
 
         public override void LoadTable()
         {
-            StreamReader sr = new StreamReader(fileName);
+            StreamReader sr = new StreamReader(FileName);
             string fieldData = sr.ReadLine();
             if (fieldData != null && fieldData.Contains(":"))
             {
-                fields = new CSVFields(fieldData);
-                records = new List<Record>();
-                string currentLine;
-                int currentRecordId = 0;
-                while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
-                    records.Add(new CSVRecord(currentLine, currentRecordId++, fields));
+                Fields = new CSVFields(fieldData);
+                RecordCache = new List<Record>();
+                //string currentLine;
+                //int currentRecordId = 0;
+                //while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
+                //    records.Add(new CSVRecord(currentLine, currentRecordId++, fields));
             }
-            else
-            {
-                fields = new CSVFields();
-                records = new List<Record>();
-            }
+            else throw new InvalidHeaderException();
             sr.Close();
         }
 
         public override Record GetRecordByID(int ID)
         {
-            foreach (Record record in records) if (record.ID == ID) return record;
+            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
+            string currentLine;
+            int currentRecordId = 0;
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
+                if (currentRecordId == ID) return new CSVRecord(currentLine, currentRecordId, Fields);
+                else currentRecordId++;
             return null;
         }
 
@@ -144,26 +145,42 @@ namespace DatabaseManager
             return GetRecords(conditionField, conditionValue)[0];
         }
 
+        public override Record[] GetRecords()
+        {
+            List<Record> records = new List<Record>();
+            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
+            string currentLine;
+            int currentRecordId = 0;
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
+                records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
+            return records.ToArray();
+        }
+
         public override Record[] GetRecords(string conditionField, object conditionValue)
         {
-            List<Record> resultRecords = new List<Record>();
-            foreach (Record record in records)
+            List<Record> records = new List<Record>();
+            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
+            string currentLine;
+            int currentRecordId = 0;
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
             {
-                Datatype type = fields.GetFieldType(conditionField);
+                Record record = new CSVRecord(currentLine, currentRecordId++, Fields);
+
+                Datatype type = Fields.GetFieldType(conditionField);
                 switch (type)
                 {
                     case Datatype.Number:
-                        if ((float)record.GetValue(conditionField) == (float)conditionValue) resultRecords.Add(record);
+                        if ((float)record.GetValue(conditionField) == (float)conditionValue) records.Add(record);
                         break;
                     case Datatype.Integer:
-                        if ((int)record.GetValue(conditionField) == (int)conditionValue) resultRecords.Add(record);
+                        if ((int)record.GetValue(conditionField) == (int)conditionValue) records.Add(record);
                         break;
                     case Datatype.VarChar:
-                        if ((string)record.GetValue(conditionField) == (string)conditionValue) resultRecords.Add(record);
+                        if ((string)record.GetValue(conditionField) == (string)conditionValue) records.Add(record);
                         break;
                 }
             }
-            return resultRecords.ToArray();
+            return records.ToArray();
         }
 
         public Record AddRecord(string[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
@@ -173,14 +190,14 @@ namespace DatabaseManager
 
         public Record AddRecord(string valueString, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
-            edited = true;
+            Edited = true;
             if ((!ifNotExists || conditionField == null || conditionValue == null)
                 ||
                 (ifNotExists && conditionField != null && conditionValue != null
                  && !RecordExists(conditionField, conditionValue)))
             {
-                Record newRecord = new CSVRecord(valueString, GetCurrnetId(), fields);
-                records.Add(newRecord);
+                Record newRecord = new CSVRecord(valueString, GetCurrnetId(), Fields);
+                RecordCache.Add(newRecord);
                 return newRecord;
             }
             return null;
@@ -188,14 +205,14 @@ namespace DatabaseManager
 
         public override Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
-            edited = true;
+            Edited = true;
             if ((!ifNotExists || conditionField == null || conditionValue == null)
                 ||
                 (ifNotExists && conditionField != null && conditionValue != null
                  && !RecordExists(conditionField, conditionValue)))
             {
-                Record newRecord = new CSVRecord(values, GetCurrnetId(), fields);
-                records.Add(newRecord);
+                Record newRecord = new CSVRecord(values, GetCurrnetId(), Fields);
+                RecordCache.Add(newRecord);
                 return newRecord;
             }
             return null;
@@ -203,14 +220,14 @@ namespace DatabaseManager
 
         public override Record UpdateRecord(Record record, object[] values)
         {
-            edited = true;
-            for (int i = 0; i < FieldCount; i++) record.SetValue(fields.fieldNames[i], values[i]);
+            Edited = true;
+            for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.fieldNames[i], values[i]);
             return record;
         }
 
         public override Record UpdateRecord(Record record, string fieldString, object value)
         {
-            edited = true;
+            Edited = true;
             record.SetValue(fieldString, value);
             return record;
         }
@@ -229,13 +246,13 @@ namespace DatabaseManager
 
         public override void DeleteRecord(Record record)
         {
-            edited = true;
-            records.Remove(record);
+            Edited = true;
+            RecordCache.Remove(record);
         }
 
         public override void DeleteRecord(int ID)
         {
-            edited = true;
+            Edited = true;
             DeleteRecord(GetRecordByID(ID));
         }
 
@@ -246,17 +263,18 @@ namespace DatabaseManager
 
         public override void MarkForUpdate()
         {
-            edited = true;
+            Edited = true;
         }
 
         public override void Save()
         {
-            if (edited)
+            if (Edited)
             {
-                edited = false;
-                StreamWriter sr = new StreamWriter(fileName);
-                sr.WriteLine(((CSVFields)fields).GetFileString());
-                foreach (CSVRecord record in records) sr.WriteLine(record.GetFileString());
+                Edited = false;
+                StreamWriter sr = new StreamWriter(FileName);
+                sr.WriteLine(((CSVFields)Fields).GetFileString());
+                foreach (CSVRecord record in RecordCache) sr.WriteLine(record.GetFileString());
+                RecordCache = new List<Record>();
                 sr.Close();
             }
         }

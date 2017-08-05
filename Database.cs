@@ -40,7 +40,7 @@ namespace DatabaseManager
         public override string ToString()
         {
             string tableList = "";
-            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.name);
+            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.Name);
             if (TableCount > 0) tableList = tableList.Remove(tableList.Length - 2, 2);
             return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
@@ -51,9 +51,9 @@ namespace DatabaseManager
             else Console.WriteLine("{0}", ToString());
             foreach (Table table in tables)
             {
-                if (table.records.Count > 0) Console.WriteLine("  > {0}:", table);
+                if (table.RecordCount > 0) Console.WriteLine("  > {0}:", table);
                 else Console.WriteLine("  > {0}", table);
-                foreach (Record record in table.records) Console.WriteLine("    - {0}", record);
+                foreach (Record record in table.GetRecords()) Console.WriteLine("    - {0}", record);
             }
         }
         
@@ -67,37 +67,37 @@ namespace DatabaseManager
     #region Table
     public abstract class Table
     {
-        public string name;
-        protected string fileName;
-        public Fields fields;
-        public List<Record> records;
-        protected bool edited;
+        public string Name { get; protected set; }
+        public string FileName { get; protected set; }
+        public Fields Fields { get; protected set; }
+        protected List<Record> RecordCache { get; set; }
+        protected bool Edited { get; set; }
 
         public abstract int RecordCount { get; }
-        public int FieldCount { get { return fields.Count; } }
+        public int FieldCount { get { return Fields.Count; } }
 
         public Table(string fileName, string name, Fields fields)
         {
-            this.fields = fields;
-            this.name = name;
-            this.fileName = fileName;
-            records = new List<Record>();
-            edited = true;
+            this.Fields = fields;
+            this.Name = name;
+            this.FileName = fileName;
+            RecordCache = new List<Record>();
+            Edited = true;
         }
 
         public Table(string fileName)
         {
-            this.fileName = fileName;
-            this.name = Path.GetFileNameWithoutExtension(fileName);
-            records = new List<Record>();
+            this.FileName = fileName;
+            this.Name = Path.GetFileNameWithoutExtension(fileName);
+            RecordCache = new List<Record>();
             LoadTable();
-            edited = false;
+            Edited = false;
         }
 
         public abstract void LoadTable();
 
         public abstract Record GetRecordByID(int ID);
-
+        public abstract Record[] GetRecords();
         public abstract Record[] GetRecords(string conditionField, object conditionValue);
         public abstract Record GetRecord(string conditionField, object conditionValue);
 
@@ -122,16 +122,16 @@ namespace DatabaseManager
 
         public bool RecordExists(string conditionField, object conditionValue)
         {
-            foreach (Record record in records) if (record.GetValue(conditionField) == conditionValue) return true;
+            foreach (Record record in RecordCache) if (record.GetValue(conditionField) == conditionValue) return true;
             return false;
         }
 
         public override string ToString()
         {
             string fieldList = "";
-            foreach (string field in fields.fieldNames) fieldList += string.Format("{0}, ", field);
-            if (fields.Count > 0) fieldList = fieldList.Remove(fieldList.Length - 2, 2);
-            return string.Format("Table('{0}', {1} {2} ({3}), {4} {5})", name, FieldCount, (FieldCount == 1) ? "field" : "fields", fieldList, RecordCount, (RecordCount == 1) ? "record" : "records");
+            foreach (string field in Fields.fieldNames) fieldList += string.Format("{0}, ", field);
+            if (Fields.Count > 0) fieldList = fieldList.Remove(fieldList.Length - 2, 2);
+            return string.Format("Table('{0}', {1} {2} ({3}), {4} {5})", Name, FieldCount, (FieldCount == 1) ? "field" : "fields", fieldList, RecordCount, (RecordCount == 1) ? "record" : "records");
         }
 
         public abstract void MarkForUpdate();
@@ -208,6 +208,13 @@ namespace DatabaseManager
             if (fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
         }
+    }
+    #endregion
+
+    #region Exceptions
+    class InvalidHeaderException : Exception
+    {
+        public InvalidHeaderException() : base("Invalid or no table header found.") { }
     }
     #endregion
 }

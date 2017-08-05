@@ -22,3 +22,9 @@ F:\Users\Max Grimmett\Documents\Visual Studio 2017\Projects\DatabaseManager\bin\
 F:\Users\Max Grimmett\Documents\Visual Studio 2017\Projects\DatabaseManager\obj\Debug\DatabaseManager.csprojResolveAssemblyReference.cache
 F:\Users\Max Grimmett\Documents\Visual Studio 2017\Projects\DatabaseManager\obj\Debug\DatabaseManager.exe
 F:\Users\Max Grimmett\Documents\Visual Studio 2017\Projects\DatabaseManager\obj\Debug\DatabaseManager.pdb
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Debug\DatabaseManager.exe.config
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Debug\DatabaseManager.exe
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Debug\DatabaseManager.pdb
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\obj\Debug\DatabaseManager.csprojResolveAssemblyReference.cache
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\obj\Debug\DatabaseManager.exe
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\obj\Debug\DatabaseManager.pdb
