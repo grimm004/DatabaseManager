@@ -4,7 +4,6 @@ using System.IO;
 
 namespace DatabaseManager
 {
-    #region Database
     public class CSVDatabase : Database
     {
         public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
@@ -23,10 +22,10 @@ namespace DatabaseManager
             return null;
         }
 
-        public override void CreateTable(string tableName, Fields fields, bool ifNotExists = true)
+        public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
             string fileName = string.Format("{0}\\{1}{2}", name, tableName, tableFileExtention);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new CSVTable(fileName, tableName, (CSVFields)fields));
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
         }
 
         public override void DeleteTable(string tableName)
@@ -90,14 +89,11 @@ namespace DatabaseManager
             return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
     }
-    #endregion
-
-    #region Table
+    
     public class CSVTable : Table
     {
-        public CSVTable(string fileName, string name, CSVFields fields) : base(fileName, name, fields)
+        public CSVTable(string fileName, string name, CSVTableFields fields) : base(fileName, name, fields)
         { }
-
         public CSVTable(string fileName) : base(fileName)
         { }
         
@@ -118,7 +114,7 @@ namespace DatabaseManager
             using (StreamReader sr = new StreamReader(FileName)) fieldData = sr.ReadLine();
             if (fieldData != null && fieldData.Contains(":"))
             {
-                Fields = new CSVFields(fieldData);
+                Fields = new CSVTableFields(fieldData);
                 RecordCache = new List<Record>();
             }
             else throw new InvalidHeaderException();
@@ -137,35 +133,10 @@ namespace DatabaseManager
             }
             return null;
         }
-
         public override Record GetRecord(string conditionField, object conditionValue)
         {
             return GetRecords(conditionField, conditionValue)[0];
         }
-
-        public override void SearchRecords(Action<Record> callback)
-        {
-            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
-            string currentLine;
-            int currentRecordId = 0;
-            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
-                callback?.Invoke(new CSVRecord(currentLine, currentRecordId++, Fields));
-        }
-
-        public override Record[] GetRecords()
-        {
-            List<Record> records = new List<Record>();
-            string currentLine;
-            int currentRecordId = 0;
-            using (StreamReader sr = new StreamReader(FileName))
-            {
-                sr.ReadLine();
-                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
-                    records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
-            }
-            return records.ToArray();
-        }
-
         public override Record[] GetRecords(string conditionField, object conditionValue)
         {
             List<Record> records = new List<Record>();
@@ -195,10 +166,26 @@ namespace DatabaseManager
             }
             return records.ToArray();
         }
-
-        public Record AddRecord(string[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
+        public override Record[] GetRecords()
         {
-            return AddRecord(string.Join(",", values), ifNotExists, conditionField, conditionValue);
+            List<Record> records = new List<Record>();
+            string currentLine;
+            int currentRecordId = 0;
+            using (StreamReader sr = new StreamReader(FileName))
+            {
+                sr.ReadLine();
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                    records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
+            }
+            return records.ToArray();
+        }
+        public override void SearchRecords(Action<Record> callback)
+        {
+            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
+            string currentLine;
+            int currentRecordId = 0;
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                callback?.Invoke(new CSVRecord(currentLine, currentRecordId++, Fields));
         }
 
         public Record AddRecord(string valueString, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
@@ -234,7 +221,7 @@ namespace DatabaseManager
         public override Record UpdateRecord(Record record, object[] values)
         {
             Edited = true;
-            for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.fieldNames[i], values[i]);
+            for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.Fields[i].Name, values[i]);
             return record;
         }
 
@@ -272,7 +259,7 @@ namespace DatabaseManager
             if (!File.Exists(FileName))
             {
                 StreamWriter sr = new StreamWriter(FileName);
-                sr.WriteLine(((CSVFields)Fields).GetFileString());
+                sr.WriteLine(((CSVTableFields)Fields).GetFileString());
                 sr.Close();
             }
 
@@ -286,27 +273,27 @@ namespace DatabaseManager
             }
         }
     }
-    #endregion
-
-    #region Fields
-    public class CSVFields : Fields
+    
+    public class CSVTableFields : TableFields
     {
-        public CSVFields()
+        public CSVTableFields()
         {
-            fieldNames = new string[0];
-            fieldTypes = new Datatype[0];
+            Fields = new Field[0];
         }
-        public CSVFields(string fieldString)
+        public CSVTableFields(string fieldString)
         {
             string[] fields = fieldString.Split(',');
-            fieldNames = new string[fields.Length];
-            fieldTypes = new Datatype[Count];
+            Fields = new Field[fields.Length];
             for (int i = 0; i < Count; i++)
             {
                 string[] segments = fields[i].Split(':');
-                fieldNames[i] = segments[0];
-                fieldTypes[i] = GetType(segments[1]);
+                Fields[i].Name = segments[0];
+                Fields[i].DataType = GetType(segments[1]);
             }
+        }
+        public CSVTableFields(Field[] fields)
+        {
+            Fields = fields;
         }
 
         public static Datatype GetType(string typeString)
@@ -343,23 +330,23 @@ namespace DatabaseManager
         public string GetFileString()
         {
             string fileString = "";
-            for (int i = 0; i < Count; i++) fileString += string.Format("{0}:{1},", fieldNames[i], GetFileType(fieldTypes[i]));
+            for (int i = 0; i < Count; i++) fileString += string.Format("{0}:{1},", Fields[i].Name, GetFileType(Fields[i].DataType));
             return fileString.Substring(0, fileString.Length - 1);
         }
     }
-    #endregion
 
-    #region Record
+    public class CSVField : Field { }
+
     public class CSVRecord : Record
     {
-        public CSVRecord(string valueString, int ID, Fields fields)
+        public CSVRecord(string valueString, int ID, TableFields fields)
         {
             this.ID = ID;
             this.fields = fields;
             LoadString(valueString);
         }
 
-        public CSVRecord(object[] values, int ID, Fields fields)
+        public CSVRecord(object[] values, int ID, TableFields fields)
         {
             this.ID = ID;
             this.fields = fields;
@@ -395,7 +382,7 @@ namespace DatabaseManager
 
             for (int i = 0; i < fields.Count; i++)
             {
-                switch (fields.fieldTypes[i])
+                switch (fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         values[i] = Convert.ToDouble(parts[i]);
@@ -415,10 +402,10 @@ namespace DatabaseManager
             string fileString = "";
             for (int i = 0; i < fields.Count; i++)
             {
-                switch (fields.fieldTypes[i])
+                switch (fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        fileString += Convert.ToString((double)values[i]);
+                        fileString += ((double)values[i]).ToString("R");
                         break;
                     case Datatype.Integer:
                         fileString += Convert.ToString((int)values[i]);
@@ -435,16 +422,18 @@ namespace DatabaseManager
 
         public override object GetValue(string field)
         {
-            return values[Array.IndexOf(fields.fieldNames, field)];
+            for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return values[i];
+            return null;
         }
 
         public override void SetValue(string field, object value)
         {
             if (value != null)
             {
-                int fieldIndex = Array.IndexOf(fields.fieldNames, field);
+                int fieldIndex = -1;
+                for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) fieldIndex = i;
                 values[fieldIndex] = value;
-                switch (fields.fieldTypes[fieldIndex])
+                switch (fields.Fields[fieldIndex].DataType)
                 {
                     case Datatype.VarChar:
                         values[fieldIndex] = (string)value;
@@ -459,5 +448,4 @@ namespace DatabaseManager
             }
         }
     }
-    #endregion
 }

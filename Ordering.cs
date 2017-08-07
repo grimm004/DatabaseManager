@@ -13,11 +13,11 @@ namespace Ordering
         static OrderSerializer()
         {
             orderDatabase = new CSVDatabase("OrderDatabase");
-            orderDatabase.CreateTable("Customers", new CSVFields("Name:text,Address:text,Email:text,Phone:text"));
-            orderDatabase.CreateTable("Items", new CSVFields("Name:text,CostPence:int,Stock:int"));
-            orderDatabase.CreateTable("Orders", new CSVFields("CustomerID:number,CardID:number"));
-            orderDatabase.CreateTable("CreditCards", new CSVFields("Name:text,MainNumber:text,ExpiryDate:text,SecurityCode:text"));
-            orderDatabase.CreateTable("PurchasedItems", new CSVFields("OrderID:int,ItemID:int,Quantity:int"));
+            orderDatabase.CreateTable("Customers", new CSVTableFields("Name:text,Address:text,Email:text,Phone:text"));
+            orderDatabase.CreateTable("Items", new CSVTableFields("Name:text,CostPence:int,Stock:int"));
+            orderDatabase.CreateTable("Orders", new CSVTableFields("CustomerID:number,CardID:number"));
+            orderDatabase.CreateTable("CreditCards", new CSVTableFields("Name:text,MainNumber:text,ExpiryDate:text,SecurityCode:text"));
+            orderDatabase.CreateTable("PurchasedItems", new CSVTableFields("OrderID:int,ItemID:int,Quantity:int"));
             stockItemRecords = new List<Record>(orderDatabase.GetTable("Items").GetRecords());
             stockItems = new List<StockItem>();
             foreach (Record itemRecord in stockItemRecords)

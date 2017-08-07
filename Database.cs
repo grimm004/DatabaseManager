@@ -4,23 +4,21 @@ using System.IO;
 
 namespace DatabaseManager
 {
-    #region Datatype
     public enum Datatype
     {
         Number,
         Integer,
         VarChar,
+        Null,
     }
-    #endregion
-
-    #region Database
+    
     public abstract class Database
     {
         public List<Table> tables;
         protected string name;
         protected string tableFileExtention;
 
-        public abstract void CreateTable(string tableName, Fields fields, bool ifNotExists = true);
+        public abstract void CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
         public abstract Table GetTable(string tableName);
         public abstract void DeleteTable(string tableName);
         public int TableCount { get { return tables.Count; } }
@@ -61,21 +59,19 @@ namespace DatabaseManager
             foreach (Table table in tables) table.Save();
         }
     }
-    #endregion
-
-    #region Table
+    
     public abstract class Table
     {
         public string Name { get; protected set; }
         public string FileName { get; protected set; }
-        public Fields Fields { get; protected set; }
+        public TableFields Fields { get; protected set; }
         protected List<Record> RecordCache { get; set; }
         protected bool Edited { get; set; }
 
         public abstract int RecordCount { get; }
         public int FieldCount { get { return Fields.Count; } }
 
-        public Table(string fileName, string name, Fields fields)
+        public Table(string fileName, string name, TableFields fields)
         {
             this.Fields = fields;
             this.Name = name;
@@ -105,7 +101,6 @@ namespace DatabaseManager
         {
             return AddRecord(values, false, null, null);
         }
-
         public abstract Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
 
         public abstract Record UpdateRecord(Record record, object[] values);
@@ -122,7 +117,7 @@ namespace DatabaseManager
         public override string ToString()
         {
             string fieldList = "";
-            foreach (string field in Fields.fieldNames) fieldList += string.Format("{0}, ", field);
+            foreach (Field field in Fields.Fields) fieldList += string.Format("{0}, ", field.Name);
             if (Fields.Count > 0) fieldList = fieldList.Remove(fieldList.Length - 2, 2);
             return string.Format("Table('{0}', {1} {2} ({3}), {4} {5})", Name, FieldCount, (FieldCount == 1) ? "field" : "fields", fieldList, RecordCount, (RecordCount == 1) ? "record" : "records");
         }
@@ -131,46 +126,52 @@ namespace DatabaseManager
 
         public abstract void Save();
     }
-    #endregion
-
-    #region Fields
-    public class Fields
+    
+    public class TableFields
     {
-        public string[] fieldNames;
-        public Datatype[] fieldTypes;
-        public int[] fieldSizes;
-        public int[] fieldOffsets;
+        public Field[] Fields { get; set; }
 
-        public int Size { get; protected set; }
-        public int RecordSize { get; protected set; }
-
-        public int Count { get { return fieldNames.Length; } }
+        public int Count { get { return Fields.Length; } }
 
         public int GetFieldID(string fieldName)
         {
-            return Array.IndexOf(fieldNames, fieldName);
+            for (int i = 0; i < Count; i++) if (Fields[i].Name == fieldName) return i;
+            return -1;
         }
 
         public Datatype GetFieldType(string fieldName)
         {
-            return fieldTypes[Array.IndexOf(fieldNames, fieldName)];
+            foreach (Field field in Fields) if (field.Name == fieldName) return field.DataType;
+            return Datatype.Null;
         }
 
         public override string ToString()
         {
             string fieldData = "";
-            for (int i = 0; i < Count; i++) fieldData += string.Format("{0} ({1}), ", fieldNames[i], fieldTypes[i]);
+            for (int i = 0; i < Count; i++) fieldData += string.Format("{0} ({1}), ", Fields[i].Name, Fields[i].DataType);
             if (Count > 0) fieldData = fieldData.Remove(fieldData.Length - 2, 2);
             return string.Format("Fields({0})", fieldData);
         }
     }
-    #endregion
 
-    #region Record
+    public abstract class Field
+    {
+        public string Name { get; set; }
+        public Datatype DataType { get; set; }
+
+        public Field() { Name = ""; DataType = Datatype.Null; }
+        public Field(string name, Datatype dataType) { Name = name; DataType = dataType; }
+
+        public override string ToString()
+        {
+            return string.Format("Field(Name: '0', DataType: '{1}')", Name, DataType);
+        }
+    }
+
     public abstract class Record
     {
         public int ID;
-        protected Fields fields;
+        protected TableFields fields;
         protected object[] values;
         private const int maxStringLength = 10;
 
@@ -182,11 +183,10 @@ namespace DatabaseManager
         {
             string rowData = "";
             for (int i = 0; i < fields.Count; i++)
-            {
-                switch (fields.fieldTypes[i])
+                switch (fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        rowData += string.Format("{0:0.0000}, ", (double)values[i]);
+                        rowData += string.Format("{0:0.0000}, ", values[i]);
                         break;
                     case Datatype.Integer:
                         rowData += string.Format("{0}, ", (int)values[i]);
@@ -197,17 +197,13 @@ namespace DatabaseManager
                         rowData += string.Format("'{0}', ", outputString);
                         break;
                 }
-            }
             if (fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
         }
     }
-    #endregion
-
-    #region Exceptions
+    
     class InvalidHeaderException : Exception
     {
         public InvalidHeaderException() : base("Invalid or no table header found.") { }
     }
-    #endregion
 }
