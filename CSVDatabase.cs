@@ -287,8 +287,7 @@ namespace DatabaseManager
             for (int i = 0; i < Count; i++)
             {
                 string[] segments = fields[i].Split(':');
-                Fields[i].Name = segments[0];
-                Fields[i].DataType = GetType(segments[1]);
+                Fields[i] = new CSVField(segments[0], GetType(segments[1]));
             }
         }
         public CSVTableFields(Field[] fields)
@@ -335,7 +334,11 @@ namespace DatabaseManager
         }
     }
 
-    public class CSVField : Field { }
+    public class CSVField : Field
+    {
+        public CSVField() : base() { }
+        public CSVField(string name, Datatype dataType) : base(name, dataType) { }
+    }
 
     public class CSVRecord : Record
     {
