@@ -7,10 +7,11 @@ namespace DatabaseManager
     #region Database
     public class CSVDatabase : Database
     {
-        public CSVDatabase(string name, bool createIfNotExists = true, string tableExtention = ".table")
+        public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
+            this.tableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
-            string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableExtention));
+            string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
             tables = new List<Table>();
             foreach (string tableFile in tableFiles) tables.Add(new CSVTable(tableFile));
             this.name = name;
@@ -22,10 +23,10 @@ namespace DatabaseManager
             return null;
         }
 
-        public void CreateTable(string tableName, CSVFields fields, bool ifNotExists = true)
+        public override void CreateTable(string tableName, Fields fields, bool ifNotExists = true)
         {
-            string fileName = string.Format("{0}\\{1}.table", name, tableName);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new CSVTable(fileName, tableName, fields));
+            string fileName = string.Format("{0}\\{1}{2}", name, tableName, tableFileExtention);
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new CSVTable(fileName, tableName, (CSVFields)fields));
         }
 
         public override void DeleteTable(string tableName)
@@ -81,16 +82,6 @@ namespace DatabaseManager
             return null;
         }
 
-        public override void DeleteRecord(string tableName, Record record)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(record);
-        }
-
-        public override void DeleteRecord(string tableName, int ID)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(ID);
-        }
-
         public override string ToString()
         {
             string tableList = "";
@@ -110,33 +101,40 @@ namespace DatabaseManager
         public CSVTable(string fileName) : base(fileName)
         { }
         
-        public override int RecordCount { get { return RecordCache.Count; } }
+        public override int RecordCount
+        {
+            get
+            {
+                int lineCount = -1;
+                using (StreamReader sr = new StreamReader(FileName))
+                    while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
+                return lineCount;
+            }
+        }
 
         public override void LoadTable()
         {
-            StreamReader sr = new StreamReader(FileName);
-            string fieldData = sr.ReadLine();
+            string fieldData;
+            using (StreamReader sr = new StreamReader(FileName)) fieldData = sr.ReadLine();
             if (fieldData != null && fieldData.Contains(":"))
             {
                 Fields = new CSVFields(fieldData);
                 RecordCache = new List<Record>();
-                //string currentLine;
-                //int currentRecordId = 0;
-                //while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
-                //    records.Add(new CSVRecord(currentLine, currentRecordId++, fields));
             }
             else throw new InvalidHeaderException();
-            sr.Close();
         }
 
         public override Record GetRecordByID(int ID)
         {
-            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
             string currentLine;
             int currentRecordId = 0;
-            while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
-                if (currentRecordId == ID) return new CSVRecord(currentLine, currentRecordId, Fields);
-                else currentRecordId++;
+            using (StreamReader sr = new StreamReader(FileName))
+            {
+                sr.ReadLine();
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
+                    if (currentRecordId == ID) return new CSVRecord(currentLine, currentRecordId, Fields);
+                    else currentRecordId++;
+            }
             return null;
         }
 
@@ -145,39 +143,54 @@ namespace DatabaseManager
             return GetRecords(conditionField, conditionValue)[0];
         }
 
-        public override Record[] GetRecords()
+        public override void SearchRecords(Action<Record> callback)
         {
-            List<Record> records = new List<Record>();
             StreamReader sr = new StreamReader(FileName); sr.ReadLine();
             string currentLine;
             int currentRecordId = 0;
-            while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
-                records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                callback?.Invoke(new CSVRecord(currentLine, currentRecordId++, Fields));
+        }
+
+        public override Record[] GetRecords()
+        {
+            List<Record> records = new List<Record>();
+            string currentLine;
+            int currentRecordId = 0;
+            using (StreamReader sr = new StreamReader(FileName))
+            {
+                sr.ReadLine();
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                    records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
+            }
             return records.ToArray();
         }
 
         public override Record[] GetRecords(string conditionField, object conditionValue)
         {
             List<Record> records = new List<Record>();
-            StreamReader sr = new StreamReader(FileName); sr.ReadLine();
             string currentLine;
             int currentRecordId = 0;
-            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+            using (StreamReader sr = new StreamReader(FileName))
             {
-                Record record = new CSVRecord(currentLine, currentRecordId++, Fields);
-
-                Datatype type = Fields.GetFieldType(conditionField);
-                switch (type)
+                sr.ReadLine();
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
                 {
-                    case Datatype.Number:
-                        if ((float)record.GetValue(conditionField) == (float)conditionValue) records.Add(record);
-                        break;
-                    case Datatype.Integer:
-                        if ((int)record.GetValue(conditionField) == (int)conditionValue) records.Add(record);
-                        break;
-                    case Datatype.VarChar:
-                        if ((string)record.GetValue(conditionField) == (string)conditionValue) records.Add(record);
-                        break;
+                    Record record = new CSVRecord(currentLine, currentRecordId++, Fields);
+
+                    Datatype type = Fields.GetFieldType(conditionField);
+                    switch (type)
+                    {
+                        case Datatype.Number:
+                            if ((float)record.GetValue(conditionField) == (float)conditionValue) records.Add(record);
+                            break;
+                        case Datatype.Integer:
+                            if ((int)record.GetValue(conditionField) == (int)conditionValue) records.Add(record);
+                            break;
+                        case Datatype.VarChar:
+                            if ((string)record.GetValue(conditionField) == (string)conditionValue) records.Add(record);
+                            break;
+                    }
                 }
             }
             return records.ToArray();
@@ -244,18 +257,6 @@ namespace DatabaseManager
             return UpdateRecord(GetRecordByID(ID), values);
         }
 
-        public override void DeleteRecord(Record record)
-        {
-            Edited = true;
-            RecordCache.Remove(record);
-        }
-
-        public override void DeleteRecord(int ID)
-        {
-            Edited = true;
-            DeleteRecord(GetRecordByID(ID));
-        }
-
         public int GetCurrnetId()
         {
             return RecordCount;
@@ -268,11 +269,17 @@ namespace DatabaseManager
 
         public override void Save()
         {
+            if (!File.Exists(FileName))
+            {
+                StreamWriter sr = new StreamWriter(FileName);
+                sr.WriteLine(((CSVFields)Fields).GetFileString());
+                sr.Close();
+            }
+
             if (Edited)
             {
                 Edited = false;
-                StreamWriter sr = new StreamWriter(FileName);
-                sr.WriteLine(((CSVFields)Fields).GetFileString());
+                StreamWriter sr = new StreamWriter(FileName, true);
                 foreach (CSVRecord record in RecordCache) sr.WriteLine(record.GetFileString());
                 RecordCache = new List<Record>();
                 sr.Close();
@@ -319,9 +326,25 @@ namespace DatabaseManager
             }
         }
 
+        public string GetFileType(Datatype type)
+        {
+            switch (type)
+            {
+                case Datatype.Number:
+                    return "number";
+                case Datatype.Integer:
+                    return "integer";
+                case Datatype.VarChar:
+                default:
+                    return "string";
+            }
+        }
+
         public string GetFileString()
         {
-            return string.Join(",", fieldNames);
+            string fileString = "";
+            for (int i = 0; i < Count; i++) fileString += string.Format("{0}:{1},", fieldNames[i], GetFileType(fieldTypes[i]));
+            return fileString.Substring(0, fileString.Length - 1);
         }
     }
     #endregion

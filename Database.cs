@@ -18,7 +18,9 @@ namespace DatabaseManager
     {
         public List<Table> tables;
         protected string name;
+        protected string tableFileExtention;
 
+        public abstract void CreateTable(string tableName, Fields fields, bool ifNotExists = true);
         public abstract Table GetTable(string tableName);
         public abstract void DeleteTable(string tableName);
         public int TableCount { get { return tables.Count; } }
@@ -33,9 +35,6 @@ namespace DatabaseManager
         public abstract Record UpdateRecord(string tableName, Record record, string fieldString, object[] value);
         public abstract Record UpdateRecord(string tableName, int ID, object[] values);
         public abstract Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue);
-
-        public abstract void DeleteRecord(string tableName, Record record);
-        public abstract void DeleteRecord(string tableName, int ID);
         
         public override string ToString()
         {
@@ -100,6 +99,7 @@ namespace DatabaseManager
         public abstract Record[] GetRecords();
         public abstract Record[] GetRecords(string conditionField, object conditionValue);
         public abstract Record GetRecord(string conditionField, object conditionValue);
+        public abstract void SearchRecords(Action<Record> callback);
 
         public Record AddRecord(object[] values)
         {
@@ -109,16 +109,9 @@ namespace DatabaseManager
         public abstract Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
 
         public abstract Record UpdateRecord(Record record, object[] values);
-
         public abstract Record UpdateRecord(Record record, string fieldString, object value);
-
         public abstract Record[] UpdateRecords(string fieldString, object[] values, string conditionField, object conditionValue);
-
         public abstract Record UpdateRecord(int ID, object[] values);
-
-        public abstract void DeleteRecord(Record record);
-
-        public abstract void DeleteRecord(int ID);
 
         public bool RecordExists(string conditionField, object conditionValue)
         {

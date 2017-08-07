@@ -9,10 +9,11 @@ namespace DatabaseManager
     #region Database
     public class BINDatabase : Database
     {
-        public BINDatabase(string name, bool createIfNotExists = true)
+        public BINDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
+            this.tableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
-            string[] tableFiles = Directory.GetFiles(name, "*.table");
+            string[] tableFiles = Directory.GetFiles(name, string.Format("*.{0}", tableFileExtention));
             tables = new List<Table>();
             foreach (string tableFile in tableFiles) tables.Add(new BINTable(tableFile));
             this.name = name;
@@ -24,10 +25,10 @@ namespace DatabaseManager
             return null;
         }
 
-        public void CreateTable(string tableName, BINFields fields, bool ifNotExists = true)
+        public override void CreateTable(string tableName, Fields fields, bool ifNotExists = true)
         {
-            string fileName = string.Format("{0}\\{1}.table", name, tableName);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new BINTable(fileName, tableName, fields));
+            string fileName = string.Format("{0}\\{1}{2}", name, tableName, tableFileExtention);
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new BINTable(fileName, tableName, (BINFields)fields));
         }
 
         public override void DeleteTable(string tableName)
@@ -83,16 +84,6 @@ namespace DatabaseManager
             return null;
         }
 
-        public override void DeleteRecord(string tableName, Record record)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(record);
-        }
-
-        public override void DeleteRecord(string tableName, int ID)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) table.DeleteRecord(ID);
-        }
-
         public override string ToString()
         {
             string tableList = "";
@@ -135,6 +126,11 @@ namespace DatabaseManager
                 //}
             }
             UpdateProperties();
+        }
+
+        public override void SearchRecords(Action<Record> callback)
+        {
+            throw new NotImplementedException();
         }
 
         public override Record[] GetRecords()
@@ -341,18 +337,6 @@ namespace DatabaseManager
         public override Record UpdateRecord(int ID, object[] values)
         {
             return UpdateRecord(GetRecordByID(ID), values);
-        }
-
-        public override void DeleteRecord(Record record)
-        {
-            MarkForUpdate();
-            base.RecordCache.Remove(record);
-        }
-
-        public override void DeleteRecord(int ID)
-        {
-            MarkForUpdate();
-            DeleteRecord(GetRecordByID(ID));
         }
 
         public int CurrentID { get; private set; }
