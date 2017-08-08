@@ -14,23 +14,23 @@ namespace DatabaseManager
             Console.WriteLine("Starting timer...");
             Stopwatch watch = Stopwatch.StartNew();
 
-            GenerateRandomRecords(database, "TestTable", 1000000, true);
+            //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
 
-            //Console.WriteLine(database.GetRecords("TestTable", "MyRecordRandomNumber", 3.6192688941955566).Length);
-            //Console.WriteLine(Convert.ToDouble(database.GetRecordByID("TestTable", 100000).GetValue("MyRecordRandomNumber")).ToString("R"));
-
-            //((BINTable)database.GetTable("TestTable")).SearchRecords(Callback);
+            //GenerateRandomRecords(database, "TestTable4", 50000000, true);
+            
+            ((BINTable)database.GetTable("TestTable4")).SearchRecords(Callback);
 
             watch.Stop();
 
-            Console.WriteLine("Done in " + watch.ElapsedMilliseconds + "ms.");
+            //Console.WriteLine("Done in {0}ms (average of {1} records per second)", watch.ElapsedMilliseconds, 50000000 / (watch.ElapsedMilliseconds / 1000));
+            Console.WriteLine("Done in {0}ms.", watch.ElapsedMilliseconds);
 
             Console.ReadKey();
         }
 
         static void Callback(Record record)
         {
-            if ((int)record.GetValue("MyRecordInteger") == 3) Console.WriteLine(record);
+            if ((int)record.GetValue("RandomIntegerField") == 1487876313) Console.WriteLine(record);
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)
@@ -38,22 +38,24 @@ namespace DatabaseManager
             if (createTable)
             {
                 Console.WriteLine("Creating table...");
-                database.CreateTable(tableName, new BINTableFields(new string[] { "RandomStringField", "RandomNumberField", "RandomIntegerField" }, new Datatype[] { Datatype.VarChar, Datatype.Number, Datatype.Integer }), false);
+                database.CreateTable(tableName, new BINTableFields(new string[] { "RandomStringField", "RandomNumberField", "RandomIntegerField" }, new Datatype[] { Datatype.VarChar, Datatype.Number, Datatype.Integer }, new ushort[] { 128, 0, 0 }), false);
             }
             Random random = new Random();
             string charSelection = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
             for (int i = 0; i < numRecords; i++)
             {
                 string recordString = "";
-                for (int a = 0; a < random.Next(BINTableFields.VarCharLength / 2,BINTableFields.VarCharLength); a++) recordString += charSelection[random.Next(charSelection.Length)];
-                database.AddRecord(tableName, new object[] { recordString, (float)random.Next((int)Math.Pow(2, 30)) / (float)random.Next((int)Math.Pow(2, 30)), random.Next(-100, 101) });
+                for (int a = 0; a < 128; a++) recordString += charSelection[random.Next(charSelection.Length)];
+                database.AddRecord(tableName, new object[] { recordString, (float)random.Next(-0x7FFFFFFF, 0x7FFFFFFF) / random.Next(-0x7FFFFFFF, 0x7FFFFFFF), random.Next(-0x7FFFFFFF, 0x7FFFFFFF) });
 
-                if (i % 100000 == 0)
+                if (i % 50000 == 0)
                 {
-                    Console.WriteLine("Updating table...");
+                    Console.WriteLine("Updating table (current record {0}/{1}) ({2:0}%)...", i, numRecords, 100 * i / numRecords);
                     database.SaveChanges();
                 }
             }
+            Console.WriteLine("Updating table (finalising)...");
+            database.SaveChanges();
             Console.WriteLine("Done!");
         }
     }

@@ -57,7 +57,7 @@ namespace Ordering
 
                 foreach (OrderedItem orderedItem in order.orderedItems)
                 {
-                    int itemRecordID = GetItemRecordID(orderedItem.item);
+                    uint itemRecordID = GetItemRecordID(orderedItem.item);
                     orderDatabase.UpdateRecord("Items", itemRecordID, new object[] { null, null, stockItems[(int)orderedItem.item].remainingStock - orderedItem.quantity });
                     orderDatabase.AddRecord("PurchasedItems", new object[] { orderRecord.ID, itemRecordID, orderedItem.quantity });
                 }
@@ -73,7 +73,7 @@ namespace Ordering
             orderDatabase.SaveChanges();
         }
 
-        private static int GetItemRecordID(Item item)
+        private static uint GetItemRecordID(Item item)
         {
             return stockItemRecords[(int)item].ID;
         }

@@ -4,6 +4,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
+// TODO: Fix Constructors
+
 namespace DatabaseManager
 {
     public class BINDatabase : Database
@@ -41,7 +43,7 @@ namespace DatabaseManager
             return null;
         }
 
-        public override Record GetRecordByID(string tableName, int ID)
+        public override Record GetRecordByID(string tableName, uint ID)
         {
             foreach (Table table in tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
             return null;
@@ -77,7 +79,7 @@ namespace DatabaseManager
             return null;
         }
 
-        public override Record UpdateRecord(string tableName, int ID, object[] values)
+        public override Record UpdateRecord(string tableName, uint ID, object[] values)
         {
             foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(ID, values);
             return null;
@@ -100,9 +102,9 @@ namespace DatabaseManager
 
         private bool isNewFile;
 
-        private int recordCount;
-        public override int RecordCount { get { return recordCount; } }
-        public int CurrentID { get; protected set; }
+        private uint recordCount;
+        public override uint RecordCount { get { return recordCount; } }
+        public uint CurrentID { get; protected set; }
 
         public BINTable(string fileName, string name, BINTableFields fields) : base(fileName, name, fields)
         { CurrentID = 0; RecordCache = new List<Record>(); isNewFile = true; }
@@ -118,11 +120,11 @@ namespace DatabaseManager
             UpdateProperties();
         }
         
-        public override Record GetRecordByID(int ID)
+        public override Record GetRecordByID(uint ID)
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
-                int pos = BINTableFields.Size + (BINTableFields.RecordSize * ID);
+                uint pos = BINTableFields.Size + (BINTableFields.RecordSize * ID);
                 if (pos < reader.BaseStream.Length)
                 {
                     reader.BaseStream.Position = pos;
@@ -137,7 +139,7 @@ namespace DatabaseManager
             {
                 int fieldID = BINTableFields.GetFieldID(conditionField);
                 List<Record> resultRecords = new List<Record>();
-                long fieldOffset = sizeof(int) + BINTableFields.BINFields[fieldID].Offset;
+                long fieldOffset = sizeof(uint) + BINTableFields.BINFields[fieldID].Offset;
                 for (long i = BINTableFields.Size; i < reader.BaseStream.Length; i += BINTableFields.RecordSize)
                 {
                     reader.BaseStream.Position = i + fieldOffset;
@@ -209,28 +211,28 @@ namespace DatabaseManager
         }
         private void AnalyseChunk(ref List<Record> resultList, byte[] chunk, string conditionField, object conditionValue)
         {
-            int position = 0;
+            uint position = 0;
             int fieldID = BINTableFields.GetFieldID(conditionField);
-            int fieldOffset = sizeof(int) + BINTableFields.BINFields[fieldID].Offset;
-            for (int i = 0; i < chunk.Length; i += BINTableFields.RecordSize)
+            uint fieldOffset = sizeof(uint) + BINTableFields.BINFields[fieldID].Offset;
+            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize)
             {
                 position = i + fieldOffset;
                 bool valid = false;
                 switch (BINTableFields.Fields[fieldID].DataType)
                 {
                     case Datatype.Number:
-                        valid = Convert.ToDouble(conditionValue) == BitConverter.ToDouble(chunk, position);
-                        position += sizeof(double);
+                        valid = Convert.ToDouble(conditionValue) == BitConverter.ToDouble(chunk, (int)position);
+                        position += BINTableFields.BINFields[fieldID].Size;
                         break;
                     case Datatype.Integer:
-                        valid = (int)conditionValue == BitConverter.ToInt32(chunk, position);
+                        valid = (int)conditionValue == BitConverter.ToInt32(chunk, (int)position);
                         position += sizeof(int);
                         break;
                     case Datatype.VarChar:
-                        int stringSize = BitConverter.ToInt16(chunk, position);
-                        position += sizeof(short);
-                        valid = (string)conditionValue == Encoding.UTF8.GetString(chunk, position, stringSize);
-                        position += BINTableFields.VarCharLength;
+                        int stringSize = BitConverter.ToInt16(chunk, (int)position);
+                        position += sizeof(ushort);
+                        valid = (string)conditionValue == Encoding.UTF8.GetString(chunk, (int)position, stringSize);
+                        position += BINTableFields.BINFields[fieldID].Size;
                         break;
                 }
 
@@ -243,11 +245,11 @@ namespace DatabaseManager
         }
         private void AnalyseChunk(ref List<Record> resultList, byte[] chunk)
         {
-            for (int i = 0; i < chunk.Length; i += BINTableFields.RecordSize) resultList.Add(new BINRecord(chunk, BINTableFields, i));
+            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize) resultList.Add(new BINRecord(chunk, BINTableFields, i));
         }
         private void AnalyseChunk(byte[] chunk, Action<Record> callback)
         {
-            for (int i = 0; i < chunk.Length; i += BINTableFields.RecordSize) callback?.Invoke(new BINRecord(chunk, BINTableFields, i));
+            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize) callback?.Invoke(new BINRecord(chunk, BINTableFields, i));
         }
 
         public override Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
@@ -283,7 +285,7 @@ namespace DatabaseManager
             foreach (Record record in records) UpdateRecord(record, values);
             return records;
         }
-        public override Record UpdateRecord(int ID, object[] values)
+        public override Record UpdateRecord(uint ID, object[] values)
         {
             return UpdateRecord(GetRecordByID(ID), values);
         }
@@ -292,7 +294,7 @@ namespace DatabaseManager
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
-                recordCount = (int)((reader.BaseStream.Length - (long)BINTableFields.Size) / BINTableFields.RecordSize);
+                recordCount = (uint)((reader.BaseStream.Length - BINTableFields.Size) / BINTableFields.RecordSize);
                 CurrentID = recordCount - 1;
             }
         }
@@ -322,142 +324,145 @@ namespace DatabaseManager
     {
         public BINField[] BINFields { get { return Array.ConvertAll(Fields, item => (BINField)item); } }
 
-        public int Size { get; protected set; }
-        public int RecordSize { get; protected set; }
+        public uint Size { get; protected set; }
+        public uint RecordSize { get; protected set; }
 
-        public const int FieldSize = 32;
-        public const int VarCharLength = 1024;
+        public const int FieldNameSize = 32;
 
         public BINTableFields()
         {
             Fields = new Field[0];
             LoadTypeSizes();
         }
-        public BINTableFields(string[] fieldNames, Datatype[] fieldTypes)
+        public BINTableFields(string[] fieldNames, Datatype[] fieldTypes, ushort[] varCharLengths)
         {
             Fields = new Field[fieldNames.Length];
             for (int i = 0; i < Fields.Length; i++)
+            {
                 Fields[i] = new BINField(fieldNames[i], fieldTypes[i]);
+                if (fieldTypes[i] == Datatype.VarChar) BINFields[i].VarCharSize = varCharLengths[i];
+            }
             LoadTypeSizes();
         }
+        //public BINTableFields(BINField[] fields)
+        //{
+        //    Fields = fields;
+        //    LoadTypeSizes();
+        //}
         public BINTableFields(BinaryReader reader)
         {
             int manifestSize = reader.ReadInt32();
-
-            int offset = 0;
-
-            List<Field> fields = new List<Field>();
-
+            uint offset = sizeof(uint);
+            List<BINField> fields = new List<BINField>();
             while (offset < manifestSize)
             {
-                Field currentField = new BINField();
-                byte[] stringBytesRaw = reader.ReadBytes(FieldSize);
+                byte[] stringBytesRaw = reader.ReadBytes(FieldNameSize);
                 List<byte> stringBytes = new List<byte>();
                 foreach (byte currentByte in stringBytesRaw) if (currentByte != 0x00) stringBytes.Add(currentByte);
-                currentField.Name = Encoding.UTF8.GetString(stringBytes.ToArray());
-                offset += FieldSize;
-                currentField.DataType = (Datatype)reader.ReadByte();
-                fields.Add(currentField);
+                string name = Encoding.UTF8.GetString(stringBytes.ToArray());
+                offset += FieldNameSize;
+                Datatype dataType = (Datatype)reader.ReadByte();
                 offset += sizeof(byte);
+                ushort varCharSize = 0;
+                if (dataType == Datatype.VarChar)
+                {
+                    varCharSize = reader.ReadUInt16();
+                    offset += sizeof(ushort);
+                }
+                fields.Add(new BINField(name, dataType, varCharSize));
             }
-
-            Size = offset + sizeof(int);
-
+            Size = offset;
             Fields = fields.ToArray();
-
             LoadTypeSizes();
         }
 
         public void LoadTypeSizes()
         {
-            int currentOffset = 0;
+            uint currentOffset = 0;
+            RecordSize = sizeof(uint);
             for (int i = 0; i < Count; i++)
             {
                 BINFields[i].Offset = currentOffset;
-                int currentFieldSize = GetTypeSize(Fields[i].DataType);
-                currentOffset += currentFieldSize;
-                BINFields[i].Size = currentFieldSize;
-            }
-            RecordSize = sizeof(int);
-            foreach (BINField field in Fields) RecordSize += field.Size;
-        }
-
-        public int GetTypeSize(Datatype type)
-        {
-            switch (type)
-            {
-                case Datatype.Number:
-                    return sizeof(double);
-                case Datatype.Integer:
-                    return sizeof(int);
-                case Datatype.VarChar:
-                    return VarCharLength + 2;
-                default:
-                    return 0;
+                currentOffset += BINFields[i].Size;
+                RecordSize += BINFields[i].Size;
             }
         }
 
         public void WriteManifestBytes(BinaryWriter writer)
         {
-            writer.Write((Count * (1 + FieldSize)));
+            int manifestSize = 0;
+            foreach (BINField field in Fields) manifestSize += field.DataType != Datatype.VarChar ? FieldNameSize + sizeof(byte) : manifestSize += FieldNameSize + sizeof(byte) + sizeof(ushort);
+            writer.Write(manifestSize);
             for (int i = 0; i < Count; i++)
             {
                 WriteFieldName(writer, Fields[i].Name);
                 writer.Write((byte)Fields[i].DataType);
+                if (Fields[i].DataType == Datatype.VarChar)
+                    writer.Write(BINFields[i].VarCharSize);
             }
         }
 
         private void WriteFieldName(BinaryWriter writer, string fieldName)
         {
-            if (fieldName.Length > FieldSize) fieldName = fieldName.Substring(0, FieldSize);
-            List<byte> dataList = new List<byte>(Encoding.UTF8.GetBytes(fieldName));
-            for (int i = dataList.Count; i < FieldSize; i++) dataList.Add(0);
-            writer.Write(dataList.ToArray());
+            if (fieldName.Length > FieldNameSize) fieldName = fieldName.Substring(0, FieldNameSize);
+            byte[] data = Encoding.UTF8.GetBytes(fieldName);
+            writer.Write(data);
+            for (int i = data.Length; i < FieldNameSize; i++) writer.Write((byte)0x00);
         }
     }
 
     public class BINField : Field
     {
-        public int Size { get; set; }
-        public int Offset { get; set; }
+        public uint Size { get; protected set; }
+        public uint Offset { get; set; }
+        public ushort VarCharSize { get { return (ushort)(Size - 2); } set { Size = value + (uint)2; } }
 
-        public BINField() : base() { Size = 0; Offset = 0; }
-        public BINField(string name, Datatype dataType) : base(name, dataType) { Size = 0; Offset = 0; }
-        public BINField(string name, Datatype dataType, int size, int offset) : base(name, dataType) { Size = size; Offset = offset; }
+        //public BINField() : base() { Size = 0; Offset = 0; }
+        public BINField(string name, Datatype dataType, ushort varCharSize = 0) : base(name, dataType)
+        {
+            switch (dataType)
+            {
+                case Datatype.Number:
+                    Size = sizeof(double);
+                    break;
+                case Datatype.Integer:
+                    Size = sizeof(int);
+                    break;
+                case Datatype.VarChar:
+                    VarCharSize = varCharSize;
+                    break;
+                default:
+                    break;
+            }
+            Offset = 0;
+        }
+        //public BINField(string name, Datatype dataType, uint size, uint offset) : base(name, dataType) { Size = size; Offset = offset; }
     }
 
     public class BINRecord : Record
     {
-        public int Size { get; private set; }
-
-        public BINRecord(object[] values, int ID, BINTableFields fields)
+        public BINRecord(object[] values, uint ID, BINTableFields fields)
         {
             this.ID = ID;
             this.fields = fields;
             this.values = values;
-            Size = sizeof(int);
-            foreach (BINField field in fields.Fields) Size += field.Size;
         }
 
-        public BINRecord(byte[] data, BINTableFields fields, int startPosition = 0)
+        public BINRecord(byte[] data, BINTableFields fields, uint startPosition = 0)
         {
             this.fields = fields;
             LoadRecord(data, startPosition);
-            Size = sizeof(int);
-            foreach (BINField field in fields.Fields) Size += field.Size;
         }
 
         public BINRecord(BinaryReader reader, BINTableFields fields)
         {
             this.fields = fields;
             LoadRecord(reader);
-            Size = sizeof(int);
-            foreach (BINField field in fields.Fields) Size += field.Size;
         }
 
         public void LoadRecord(BinaryReader reader)
         {
-            this.ID = reader.ReadInt32();
+            this.ID = reader.ReadUInt32();
             this.values = new object[fields.Count];
             for (int i = 0; i < fields.Count; i++)
             {
@@ -473,45 +478,42 @@ namespace DatabaseManager
                     case Datatype.VarChar:
                         int varCharSize = reader.ReadInt16();
                         values[i] = Encoding.UTF8.GetString(reader.ReadBytes(varCharSize));
-                        reader.BaseStream.Position += BINTableFields.VarCharLength - varCharSize;
+                        reader.BaseStream.Position += ((BINField)fields.Fields[i]).VarCharSize - varCharSize;
                         break;
                 }
             }
         }
 
-        public void LoadRecord(byte[] data, int startPosition = 0)
+        public void LoadRecord(byte[] data, uint startPosition = 0)
         {
-            int position = startPosition;
-            this.ID = BitConverter.ToInt32(data, position);
-            position += sizeof(int);
+            uint position = startPosition;
+            this.ID = BitConverter.ToUInt32(data, (int)position);
+            position += sizeof(uint);
             this.values = new object[fields.Count];
             for (int i = 0; i < fields.Count; i++)
-            {
                 switch (fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        values[i] = BitConverter.ToDouble(data, position);
+                        values[i] = BitConverter.ToDouble(data, (int)position);
                         position += sizeof(double);
                         break;
                     case Datatype.Integer:
-                        values[i] = BitConverter.ToInt32(data, position);
+                        values[i] = BitConverter.ToInt32(data, (int)position);
                         position += sizeof(int);
                         break;
                     case Datatype.VarChar:
-                        int varCharSize = BitConverter.ToInt16(data, position);
-                        position += sizeof(short);
-                        values[i] = Encoding.UTF8.GetString(data, position, varCharSize);
-                        position += BINTableFields.VarCharLength;
+                        int varCharSize = BitConverter.ToInt16(data, (int)position);
+                        position += sizeof(ushort);
+                        values[i] = Encoding.UTF8.GetString(data, (int)position, varCharSize);
+                        position += ((BINField)fields.Fields[i]).VarCharSize;
                         break;
                 }
-            }
         }
 
         public void WriteFileBytes(BinaryWriter writer)
         {
             writer.Write(ID);
             for (int i = 0; i < fields.Count; i++)
-            {
                 switch (fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
@@ -521,20 +523,19 @@ namespace DatabaseManager
                         writer.Write((int)values[i]);
                         break;
                     case Datatype.VarChar:
-                        WriteVarCharBytes(writer, (string)values[i]);
+                        WriteVarCharBytes(writer, (BINField)fields.Fields[i], (string)values[i]);
                         break;
                 }
-            }
         }
 
-        public void WriteVarCharBytes(BinaryWriter writer, string value)
+        public void WriteVarCharBytes(BinaryWriter writer, BINField field, string value)
         {
-            if (value.Length > BINTableFields.VarCharLength) value = value.Substring(0, BINTableFields.VarCharLength);
+            if (value.Length > field.VarCharSize) value = value.Substring(0, field.VarCharSize);
             byte[] stringBytes = Encoding.UTF8.GetBytes(value);
-            writer.Write((short)stringBytes.Length);
+            writer.Write((ushort)stringBytes.Length);
             writer.Write(stringBytes);
-            int offset = stringBytes.Length;
-            for (int i = offset; i < BINTableFields.VarCharLength; i++) writer.Write((byte)0);
+            uint offset = (uint)stringBytes.Length;
+            for (uint i = offset; i < field.VarCharSize; i++) writer.Write((byte)0x00);
         }
 
         public override object GetValue(string field)

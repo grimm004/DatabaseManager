@@ -39,7 +39,7 @@ namespace DatabaseManager
             return null;
         }
 
-        public override Record GetRecordByID(string tableName, int ID)
+        public override Record GetRecordByID(string tableName, uint ID)
         {
             foreach (Table table in tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
             return null;
@@ -75,7 +75,7 @@ namespace DatabaseManager
             return null;
         }
 
-        public override Record UpdateRecord(string tableName, int ID, object[] values)
+        public override Record UpdateRecord(string tableName, uint ID, object[] values)
         {
             foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(ID, values);
             return null;
@@ -96,18 +96,6 @@ namespace DatabaseManager
         { }
         public CSVTable(string fileName) : base(fileName)
         { }
-        
-        public override int RecordCount
-        {
-            get
-            {
-                int lineCount = -1;
-                using (StreamReader sr = new StreamReader(FileName))
-                    while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
-                return lineCount;
-            }
-        }
-
         public override void LoadTable()
         {
             string fieldData;
@@ -120,10 +108,25 @@ namespace DatabaseManager
             else throw new InvalidHeaderException();
         }
 
-        public override Record GetRecordByID(int ID)
+        public override uint RecordCount
+        {
+            get
+            {
+                uint lineCount = 0;
+                using (StreamReader sr = new StreamReader(FileName))
+                    while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
+                return lineCount;
+            }
+        }
+        public uint GetCurrnetId()
+        {
+            return RecordCount;
+        }
+
+        public override Record GetRecordByID(uint ID)
         {
             string currentLine;
-            int currentRecordId = 0;
+            uint currentRecordId = 0;
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
@@ -141,7 +144,7 @@ namespace DatabaseManager
         {
             List<Record> records = new List<Record>();
             string currentLine;
-            int currentRecordId = 0;
+            uint currentRecordId = 0;
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
@@ -170,7 +173,7 @@ namespace DatabaseManager
         {
             List<Record> records = new List<Record>();
             string currentLine;
-            int currentRecordId = 0;
+            uint currentRecordId = 0;
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
@@ -183,7 +186,7 @@ namespace DatabaseManager
         {
             StreamReader sr = new StreamReader(FileName); sr.ReadLine();
             string currentLine;
-            int currentRecordId = 0;
+            uint currentRecordId = 0;
             while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
                 callback?.Invoke(new CSVRecord(currentLine, currentRecordId++, Fields));
         }
@@ -202,7 +205,6 @@ namespace DatabaseManager
             }
             return null;
         }
-
         public override Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
             Edited = true;
@@ -224,36 +226,27 @@ namespace DatabaseManager
             for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.Fields[i].Name, values[i]);
             return record;
         }
-
         public override Record UpdateRecord(Record record, string fieldString, object value)
         {
             Edited = true;
             record.SetValue(fieldString, value);
             return record;
         }
-
         public override Record[] UpdateRecords(string fieldString, object[] values, string conditionField, object conditionValue)
         {
             Record[] records = GetRecords(conditionField, conditionValue);
             foreach (Record record in records) UpdateRecord(record, values);
             return records;
         }
-
-        public override Record UpdateRecord(int ID, object[] values)
+        public override Record UpdateRecord(uint ID, object[] values)
         {
             return UpdateRecord(GetRecordByID(ID), values);
-        }
-
-        public int GetCurrnetId()
-        {
-            return RecordCount;
         }
 
         public override void MarkForUpdate()
         {
             Edited = true;
         }
-
         public override void Save()
         {
             if (!File.Exists(FileName))
@@ -342,14 +335,14 @@ namespace DatabaseManager
 
     public class CSVRecord : Record
     {
-        public CSVRecord(string valueString, int ID, TableFields fields)
+        public CSVRecord(string valueString, uint ID, TableFields fields)
         {
             this.ID = ID;
             this.fields = fields;
             LoadString(valueString);
         }
 
-        public CSVRecord(object[] values, int ID, TableFields fields)
+        public CSVRecord(object[] values, uint ID, TableFields fields)
         {
             this.ID = ID;
             this.fields = fields;

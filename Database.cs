@@ -23,7 +23,7 @@ namespace DatabaseManager
         public abstract void DeleteTable(string tableName);
         public int TableCount { get { return tables.Count; } }
         
-        public abstract Record GetRecordByID(string tableName, int ID);
+        public abstract Record GetRecordByID(string tableName, uint ID);
         public abstract Record GetRecord(string tableName, string conditionField, object conditionValue);
         public abstract Record[] GetRecords(string tableName, string conditionField, object conditionValue);
 
@@ -31,7 +31,7 @@ namespace DatabaseManager
         
         public abstract Record UpdateRecord(string tableName, Record record, object[] values);
         public abstract Record UpdateRecord(string tableName, Record record, string fieldString, object[] value);
-        public abstract Record UpdateRecord(string tableName, int ID, object[] values);
+        public abstract Record UpdateRecord(string tableName, uint ID, object[] values);
         public abstract Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue);
         
         public override string ToString()
@@ -68,7 +68,7 @@ namespace DatabaseManager
         protected List<Record> RecordCache { get; set; }
         protected bool Edited { get; set; }
 
-        public abstract int RecordCount { get; }
+        public abstract uint RecordCount { get; }
         public int FieldCount { get { return Fields.Count; } }
 
         public Table(string fileName, string name, TableFields fields)
@@ -91,7 +91,7 @@ namespace DatabaseManager
 
         public abstract void LoadTable();
 
-        public abstract Record GetRecordByID(int ID);
+        public abstract Record GetRecordByID(uint ID);
         public abstract Record[] GetRecords();
         public abstract Record[] GetRecords(string conditionField, object conditionValue);
         public abstract Record GetRecord(string conditionField, object conditionValue);
@@ -106,7 +106,7 @@ namespace DatabaseManager
         public abstract Record UpdateRecord(Record record, object[] values);
         public abstract Record UpdateRecord(Record record, string fieldString, object value);
         public abstract Record[] UpdateRecords(string fieldString, object[] values, string conditionField, object conditionValue);
-        public abstract Record UpdateRecord(int ID, object[] values);
+        public abstract Record UpdateRecord(uint ID, object[] values);
 
         public bool RecordExists(string conditionField, object conditionValue)
         {
@@ -170,7 +170,7 @@ namespace DatabaseManager
 
     public abstract class Record
     {
-        public int ID;
+        public uint ID;
         protected TableFields fields;
         protected object[] values;
         private const int maxStringLength = 10;

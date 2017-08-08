@@ -1,1 +1,6 @@
 F:\Users\Max Grimmett\Documents\Visual Studio 2015\Projects\DatabaseManager\bin\Release\DatabaseManager.exe.config
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Release\DatabaseManager.exe.config
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Release\DatabaseManager.exe
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\bin\Release\DatabaseManager.pdb
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\obj\Release\DatabaseManager.exe
+F:\Users\Max Grimmett\Documents\GitHub\DatabaseManager\obj\Release\DatabaseManager.pdb
