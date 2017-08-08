@@ -4,8 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-// TODO: Fix Constructors
-
 namespace DatabaseManager
 {
     public class BINDatabase : Database
