@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace DatabaseManager
@@ -8,17 +9,38 @@ namespace DatabaseManager
         static void Main(string[] args)
         {
             Console.WriteLine("Loading database...");
-            BINDatabase database = new BINDatabase("TestDatabase");
+            BINDatabase database = new BINDatabase("C:\\BINData", false);
+            //CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
             Console.WriteLine("Done!");
 
             Console.WriteLine("Starting timer...");
             Stopwatch watch = Stopwatch.StartNew();
 
-            //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
+            Console.WriteLine(database.GetTable("TestTable").RecordCount);
+            Console.WriteLine(database.GetRecordByID("TestTable", 500000));
+            database.DeleteRecord("TestTable", database.GetRecordByID("TestTable", 500000));
+            database.SaveChanges();
+            Console.WriteLine(database.GetRecordByID("TestTable", 500000));
+            Console.WriteLine(database.GetTable("TestTable").RecordCount);
 
-            //GenerateRandomRecords(database, "TestTable4", 50000000, true);
-            
-            ((BINTable)database.GetTable("TestTable4")).SearchRecords(Callback);
+            //Console.WriteLine(database);
+
+            //List<uint> recordBufferSizes = new List<uint>
+            //{
+            //    10,
+            //    10000,
+            //};
+            //List<ushort[]> varCharSizes = new List<ushort[]>
+            //{
+            //    new ushort[] { 32, 0 },
+            //    new ushort[] { 32, 32, 32, 32, 32, 32, 32, 32, 0, 0 }
+            //};
+            //database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
+
+            //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
+            //GenerateRandomRecords(database, "TestTable", 1000000, true);
+            //((BINTable)database.GetTable("TestTable")).SearchRecords(Callback);
+            //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "mac", "c0:63:94:44:52:77")) Console.WriteLine(record); ;
 
             watch.Stop();
 
@@ -30,7 +52,7 @@ namespace DatabaseManager
 
         static void Callback(Record record)
         {
-            if ((int)record.GetValue("RandomIntegerField") == 1487876313) Console.WriteLine(record);
+            Console.WriteLine(record);
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)

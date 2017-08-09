@@ -21,16 +21,13 @@ namespace Ordering
             stockItemRecords = new List<Record>(orderDatabase.GetTable("Items").GetRecords());
             stockItems = new List<StockItem>();
             foreach (Record itemRecord in stockItemRecords)
-            {
-                Item item;
-                if (Enum.TryParse((string)itemRecord.GetValue("Name"), out item))
+                if (Enum.TryParse((string)itemRecord.GetValue("Name"), out Item item))
                 {
                     int cost = (int)itemRecord.GetValue("CostPence");
                     int remainingStock = (int)itemRecord.GetValue("Stock");
                     StockItem stockItem = new StockItem(item, cost, remainingStock);
                     stockItems.Add(stockItem);
                 }
-            }
         }
 
         public static void PlaceOrder(Order order)
@@ -58,7 +55,7 @@ namespace Ordering
                 foreach (OrderedItem orderedItem in order.orderedItems)
                 {
                     uint itemRecordID = GetItemRecordID(orderedItem.item);
-                    orderDatabase.UpdateRecord("Items", itemRecordID, new object[] { null, null, stockItems[(int)orderedItem.item].remainingStock - orderedItem.quantity });
+                    //orderDatabase.UpdateRecord("Items", itemRecordID, new object[] { null, null, stockItems[(int)orderedItem.item].remainingStock - orderedItem.quantity });
                     orderDatabase.AddRecord("PurchasedItems", new object[] { orderRecord.ID, itemRecordID, orderedItem.quantity });
                 }
 

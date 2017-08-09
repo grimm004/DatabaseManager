@@ -11,82 +11,70 @@ namespace DatabaseManager
             this.tableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
             string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
-            tables = new List<Table>();
-            foreach (string tableFile in tableFiles) tables.Add(new CSVTable(tableFile));
-            this.name = name;
+            Tables = new List<Table>();
+            foreach (string tableFile in tableFiles) Tables.Add(new CSVTable(tableFile));
+            this.Name = name;
         }
-        
+
         public override Table GetTable(string tableName)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table;
+            foreach (Table table in Tables) if (table.Name == tableName) return table;
             return null;
         }
-
         public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
-            string fileName = string.Format("{0}\\{1}{2}", name, tableName, tableFileExtention);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
+            string fileName = string.Format("{0}\\{1}{2}", Name, tableName, tableFileExtention);
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
         }
-
         public override void DeleteTable(string tableName)
         {
-            foreach (Table table in tables) if (table.Name == tableName) tables.Remove(table);
-        }
-        
-        public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
-            return null;
+            foreach (Table table in Tables) if (table.Name == tableName) Tables.Remove(table);
         }
 
         public override Record GetRecordByID(string tableName, uint ID)
         {
-            foreach (Table table in tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
             return null;
         }
-
         public override Record GetRecord(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue)[0];
+            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue)[0];
             return null;
         }
-
         public override Record[] GetRecords(string tableName, string conditionField, object conditionValue)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
+            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
             return null;
         }
 
-        public override Record UpdateRecord(string tableName, Record record, object[] values)
+        public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, values);
+            foreach (Table table in Tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
             return null;
         }
-
-        public override Record UpdateRecord(string tableName, Record record, string fieldString, object[] value)
+        public override void UpdateRecord(string tableName, Record record, object[] values)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(record, fieldString, value);
-            return null;
+            foreach (Table table in Tables) if (table.Name == tableName) table.UpdateRecord(record, values);
         }
-
-        public override Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue)
+        public override void DeleteRecord(string tableName, Record record)
         {
-            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecords(fieldString, values, conditionField, conditionValue);
-            return null;
-        }
-
-        public override Record UpdateRecord(string tableName, uint ID, object[] values)
-        {
-            foreach (Table table in tables) if (table.Name == tableName) return table.UpdateRecord(ID, values);
-            return null;
+            foreach (Table table in Tables) if (table.Name == tableName) table.DeleteRecord(record);
         }
 
         public override string ToString()
         {
             string tableList = "";
-            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.Name);
+            foreach (Table table in Tables) tableList += string.Format("'{0}', ", table.Name);
             if (TableCount > 0) tableList = tableList.Remove(tableList.Length - 2, 2);
-            return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
+            return string.Format("Database('{0}', {1} {2} ({3}))", Name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
+        }
+
+        public BINDatabase ToBINDatabase(string name, List<ushort[]> varCharSizes, List<uint> recordBufferSizes, bool createIfNotExists = true, string tableFileExtention = ".table")
+        {
+            BINDatabase newDatabase = new BINDatabase(name, createIfNotExists, tableFileExtention);
+            for (int i = 0; i < TableCount; i++)
+                newDatabase.AddTable(((CSVTable)Tables[i]).ToBINTable(string.Format("{0}\\{1}{2}", newDatabase.Name, Tables[i].Name, tableFileExtention), Tables[i].Name, varCharSizes[i], recordBufferSizes[i]));
+            return newDatabase;
         }
     }
     
@@ -103,7 +91,7 @@ namespace DatabaseManager
             if (fieldData != null && fieldData.Contains(":"))
             {
                 Fields = new CSVTableFields(fieldData);
-                RecordCache = new List<Record>();
+                Changes = new ChangeCache();
             }
             else throw new InvalidHeaderException();
         }
@@ -200,7 +188,7 @@ namespace DatabaseManager
                  && !RecordExists(conditionField, conditionValue)))
             {
                 Record newRecord = new CSVRecord(valueString, GetCurrnetId(), Fields);
-                RecordCache.Add(newRecord);
+                Changes.AddedRecords.Add(newRecord);
                 return newRecord;
             }
             return null;
@@ -214,33 +202,19 @@ namespace DatabaseManager
                  && !RecordExists(conditionField, conditionValue)))
             {
                 Record newRecord = new CSVRecord(values, GetCurrnetId(), Fields);
-                RecordCache.Add(newRecord);
+                Changes.AddedRecords.Add(newRecord);
                 return newRecord;
             }
             return null;
         }
 
-        public override Record UpdateRecord(Record record, object[] values)
+        public override void UpdateRecord(Record record, object[] values)
         {
-            Edited = true;
-            for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.Fields[i].Name, values[i]);
-            return record;
+            throw new NotImplementedException();
         }
-        public override Record UpdateRecord(Record record, string fieldString, object value)
+        public override void DeleteRecord(Record record)
         {
-            Edited = true;
-            record.SetValue(fieldString, value);
-            return record;
-        }
-        public override Record[] UpdateRecords(string fieldString, object[] values, string conditionField, object conditionValue)
-        {
-            Record[] records = GetRecords(conditionField, conditionValue);
-            foreach (Record record in records) UpdateRecord(record, values);
-            return records;
-        }
-        public override Record UpdateRecord(uint ID, object[] values)
-        {
-            return UpdateRecord(GetRecordByID(ID), values);
+            throw new NotImplementedException();
         }
 
         public override void MarkForUpdate()
@@ -260,13 +234,38 @@ namespace DatabaseManager
             {
                 Edited = false;
                 StreamWriter sr = new StreamWriter(FileName, true);
-                foreach (CSVRecord record in RecordCache) sr.WriteLine(record.GetFileString());
-                RecordCache = new List<Record>();
+                foreach (CSVRecord record in Changes.AddedRecords) sr.WriteLine(record.GetFileString());
+                Changes = new ChangeCache();
                 sr.Close();
             }
         }
+        public BINTable ToBINTable(string fileName, string name, ushort[] varCharSizes, uint recordBufferSize = 100)
+        {
+            BINTableFields fields = ((CSVTableFields)Fields).ToBINTableFields(varCharSizes);
+            BINTable newTable = new BINTable(fileName, name, fields);
+            List<Record> records = new List<Record>();
+            string currentLine;
+            uint currentRecordId = 0;
+            Console.WriteLine("Starting creation of table '{0}' ('{1}') with record buffer size {2}.", name, fileName, recordBufferSize);
+            using (StreamReader sr = new StreamReader(FileName))
+            {
+                sr.ReadLine();
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                {
+                    newTable.AddRecord(new CSVRecord(currentLine, currentRecordId++, Fields).ToBINRecord(fields));
+                    if (currentRecordId % recordBufferSize == 0)
+                    {
+                        Console.WriteLine("Updating Table File (Current ID {0}/{1}) ({2:0.0}%)...", currentRecordId, RecordCount, 100 * currentRecordId / RecordCount);
+                        newTable.Save();
+                    }
+                }
+                Console.WriteLine("Updating Table File (Finalising)...");
+                newTable.Save();
+            }
+            return newTable;
+        }
     }
-    
+
     public class CSVTableFields : TableFields
     {
         public CSVTableFields()
@@ -325,12 +324,28 @@ namespace DatabaseManager
             for (int i = 0; i < Count; i++) fileString += string.Format("{0}:{1},", Fields[i].Name, GetFileType(Fields[i].DataType));
             return fileString.Substring(0, fileString.Length - 1);
         }
+
+        public BINTableFields ToBINTableFields(ushort[] varCharSizes)
+        {
+            BINField[] binFields = new BINField[Count];
+            for (int i = 0; i < binFields.Length; i++)
+            {
+                binFields[i] = ((CSVField)Fields[i]).ToBINField();
+                if (binFields[i].DataType == Datatype.VarChar) binFields[i].VarCharSize = varCharSizes[i];
+            }
+            return new BINTableFields(binFields);
+        }
     }
 
     public class CSVField : Field
     {
         public CSVField() : base() { }
         public CSVField(string name, Datatype dataType) : base(name, dataType) { }
+
+        public BINField ToBINField()
+        {
+            return new BINField(Name, DataType);
+        }
     }
 
     public class CSVRecord : Record
@@ -341,7 +356,6 @@ namespace DatabaseManager
             this.fields = fields;
             LoadString(valueString);
         }
-
         public CSVRecord(object[] values, uint ID, TableFields fields)
         {
             this.ID = ID;
@@ -392,7 +406,6 @@ namespace DatabaseManager
                 }
             }
         }
-
         public string GetFileString()
         {
             string fileString = "";
@@ -421,7 +434,6 @@ namespace DatabaseManager
             for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return values[i];
             return null;
         }
-
         public override void SetValue(string field, object value)
         {
             if (value != null)
@@ -442,6 +454,11 @@ namespace DatabaseManager
                         break;
                 }
             }
+        }
+
+        public BINRecord ToBINRecord(BINTableFields fields)
+        {
+            return new BINRecord(values, ID, fields);
         }
     }
 }

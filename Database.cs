@@ -11,42 +11,45 @@ namespace DatabaseManager
         VarChar,
         Null,
     }
-    
+
     public abstract class Database
     {
-        public List<Table> tables;
-        protected string name;
+        protected List<Table> Tables { get; set; }
+        public string Name { get; protected set; }
         protected string tableFileExtention;
 
         public abstract void CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
+        public bool AddTable(Table newTable)
+        {
+            foreach (Table table in Tables) if (table.Name == newTable.Name) return false;
+            Tables.Add(newTable);
+            return true;
+        }
         public abstract Table GetTable(string tableName);
         public abstract void DeleteTable(string tableName);
-        public int TableCount { get { return tables.Count; } }
+        public int TableCount { get { return Tables.Count; } }
         
         public abstract Record GetRecordByID(string tableName, uint ID);
         public abstract Record GetRecord(string tableName, string conditionField, object conditionValue);
         public abstract Record[] GetRecords(string tableName, string conditionField, object conditionValue);
 
         public abstract Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
-        
-        public abstract Record UpdateRecord(string tableName, Record record, object[] values);
-        public abstract Record UpdateRecord(string tableName, Record record, string fieldString, object[] value);
-        public abstract Record UpdateRecord(string tableName, uint ID, object[] values);
-        public abstract Record[] UpdateRecords(string tableName, string fieldString, object[] values, string conditionField, object conditionValue);
-        
+        public abstract void UpdateRecord(string tableName, Record record, object[] values);
+        public abstract void DeleteRecord(string tableName, Record record);
+
         public override string ToString()
         {
             string tableList = "";
-            foreach (Table table in tables) tableList += string.Format("'{0}', ", table.Name);
+            foreach (Table table in Tables) tableList += string.Format("'{0}', ", table.Name);
             if (TableCount > 0) tableList = tableList.Remove(tableList.Length - 2, 2);
-            return string.Format("Database('{0}', {1} {2} ({3}))", name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
+            return string.Format("Database('{0}', {1} {2} ({3}))", Name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
         
         public void Output()
         {
-            if (tables.Count > 0) Console.WriteLine("{0}:", ToString());
+            if (Tables.Count > 0) Console.WriteLine("{0}:", ToString());
             else Console.WriteLine("{0}", ToString());
-            foreach (Table table in tables)
+            foreach (Table table in Tables)
             {
                 if (table.RecordCount > 0) Console.WriteLine("  > {0}:", table);
                 else Console.WriteLine("  > {0}", table);
@@ -56,16 +59,30 @@ namespace DatabaseManager
         
         public void SaveChanges()
         {
-            foreach (Table table in tables) table.Save();
+            foreach (Table table in Tables) table.Save();
         }
     }
-    
+
+    public class ChangeCache
+    {
+        public List<Record> AddedRecords { get; protected set; }
+        public List<Record> EditedRecords { get; protected set; }
+        public List<Record> DeletedRecords { get; protected set; }
+
+        public ChangeCache()
+        {
+            AddedRecords = new List<Record>();
+            EditedRecords = new List<Record>();
+            DeletedRecords = new List<Record>();
+        }
+    }
+
     public abstract class Table
     {
         public string Name { get; protected set; }
         public string FileName { get; protected set; }
         public TableFields Fields { get; protected set; }
-        protected List<Record> RecordCache { get; set; }
+        protected ChangeCache Changes { get; set; }
         protected bool Edited { get; set; }
 
         public abstract uint RecordCount { get; }
@@ -76,19 +93,17 @@ namespace DatabaseManager
             this.Fields = fields;
             this.Name = name;
             this.FileName = fileName;
-            RecordCache = new List<Record>();
+            Changes = new ChangeCache();
             Edited = true;
         }
-
         public Table(string fileName)
         {
             this.FileName = fileName;
             this.Name = Path.GetFileNameWithoutExtension(fileName);
-            RecordCache = new List<Record>();
+            Changes = new ChangeCache();
             LoadTable();
             Edited = false;
         }
-
         public abstract void LoadTable();
 
         public abstract Record GetRecordByID(uint ID);
@@ -97,21 +112,24 @@ namespace DatabaseManager
         public abstract Record GetRecord(string conditionField, object conditionValue);
         public abstract void SearchRecords(Action<Record> callback);
 
+        public Record AddRecord(Record record)
+        {
+            MarkForUpdate();
+            Changes.AddedRecords.Add(record);
+            return record;
+        }
         public Record AddRecord(object[] values)
         {
             return AddRecord(values, false, null, null);
         }
         public abstract Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
-
-        public abstract Record UpdateRecord(Record record, object[] values);
-        public abstract Record UpdateRecord(Record record, string fieldString, object value);
-        public abstract Record[] UpdateRecords(string fieldString, object[] values, string conditionField, object conditionValue);
-        public abstract Record UpdateRecord(uint ID, object[] values);
+        
+        public abstract void UpdateRecord(Record record, object[] values);
+        public abstract void DeleteRecord(Record record);
 
         public bool RecordExists(string conditionField, object conditionValue)
         {
-            foreach (Record record in RecordCache) if (record.GetValue(conditionField) == conditionValue) return true;
-            return false;
+            throw new NotImplementedException();
         }
 
         public override string ToString()
@@ -123,28 +141,23 @@ namespace DatabaseManager
         }
 
         public abstract void MarkForUpdate();
-
         public abstract void Save();
     }
-    
+
     public class TableFields
     {
         public Field[] Fields { get; set; }
-
         public int Count { get { return Fields.Length; } }
-
         public int GetFieldID(string fieldName)
         {
             for (int i = 0; i < Count; i++) if (Fields[i].Name == fieldName) return i;
             return -1;
         }
-
         public Datatype GetFieldType(string fieldName)
         {
             foreach (Field field in Fields) if (field.Name == fieldName) return field.DataType;
             return Datatype.Null;
         }
-
         public override string ToString()
         {
             string fieldData = "";
@@ -176,7 +189,11 @@ namespace DatabaseManager
         private const int maxStringLength = 10;
 
         public abstract object GetValue(string field);
-
+        public T GetValue<T>(string field)
+        {
+            for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return (T)values[i];
+            throw new FieldNotFoundException(field);
+        }
         public abstract void SetValue(string field, object value);
 
         public override string ToString()
@@ -201,9 +218,15 @@ namespace DatabaseManager
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
         }
     }
-    
+
     class InvalidHeaderException : Exception
     {
         public InvalidHeaderException() : base("Invalid or no table header found.") { }
+    }
+
+    class FieldNotFoundException : Exception
+    {
+        public FieldNotFoundException() : base("Could not find field.") { }
+        public FieldNotFoundException(string fieldName) : base(string.Format("Could not find field '{0}'.", fieldName)) { }
     }
 }
