@@ -418,27 +418,27 @@ namespace DatabaseManager
         public BINRecord(object[] values, uint ID, BINTableFields fields)
         {
             this.ID = ID;
-            this.fields = fields;
+            this.Fields = fields;
             this.values = values;
         }
         public BINRecord(byte[] data, BINTableFields fields, uint startPosition = 0)
         {
-            this.fields = fields;
+            this.Fields = fields;
             LoadRecord(data, startPosition);
         }
         public BINRecord(BinaryReader reader, BINTableFields fields)
         {
-            this.fields = fields;
+            this.Fields = fields;
             LoadRecord(reader);
         }
 
         public void LoadRecord(BinaryReader reader)
         {
             this.ID = reader.ReadUInt32();
-            this.values = new object[fields.Count];
-            for (int i = 0; i < fields.Count; i++)
+            this.values = new object[Fields.Count];
+            for (int i = 0; i < Fields.Count; i++)
             {
-                switch (fields.Fields[i].DataType)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         double current = reader.ReadDouble();
@@ -450,7 +450,7 @@ namespace DatabaseManager
                     case Datatype.VarChar:
                         int varCharSize = reader.ReadInt16();
                         values[i] = Encoding.UTF8.GetString(reader.ReadBytes(varCharSize));
-                        reader.BaseStream.Position += ((BINField)fields.Fields[i]).VarCharSize - varCharSize;
+                        reader.BaseStream.Position += ((BINField)Fields.Fields[i]).VarCharSize - varCharSize;
                         break;
                 }
             }
@@ -460,9 +460,9 @@ namespace DatabaseManager
             uint position = startPosition;
             this.ID = BitConverter.ToUInt32(data, (int)position);
             position += sizeof(uint);
-            this.values = new object[fields.Count];
-            for (int i = 0; i < fields.Count; i++)
-                switch (fields.Fields[i].DataType)
+            this.values = new object[Fields.Count];
+            for (int i = 0; i < Fields.Count; i++)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         values[i] = BitConverter.ToDouble(data, (int)position);
@@ -476,17 +476,17 @@ namespace DatabaseManager
                         int varCharSize = BitConverter.ToInt16(data, (int)position);
                         position += sizeof(ushort);
                         values[i] = Encoding.UTF8.GetString(data, (int)position, varCharSize);
-                        position += ((BINField)fields.Fields[i]).VarCharSize;
+                        position += ((BINField)Fields.Fields[i]).VarCharSize;
                         break;
                 }
         }
 
         public void WriteFileBytes(BinaryWriter writer, bool positionAtId)
         {
-            writer.BaseStream.Position = positionAtId ? ((BINTableFields)fields).Size + (((BINTableFields)fields).RecordSize * ID) : writer.BaseStream.Length;
+            writer.BaseStream.Position = positionAtId ? ((BINTableFields)Fields).Size + (((BINTableFields)Fields).RecordSize * ID) : writer.BaseStream.Length;
             writer.Write(ID);
-            for (int i = 0; i < fields.Count; i++)
-                switch (fields.Fields[i].DataType)
+            for (int i = 0; i < Fields.Count; i++)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         writer.Write(Convert.ToDouble(values[i]));
@@ -495,7 +495,7 @@ namespace DatabaseManager
                         writer.Write((int)values[i]);
                         break;
                     case Datatype.VarChar:
-                        BINField field = (BINField)fields.Fields[i];
+                        BINField field = (BINField)Fields.Fields[i];
                         string value = (string)values[i];
                         if (value.Length > field.VarCharSize) value = value.Substring(0, field.VarCharSize);
                         byte[] stringBytes = Encoding.UTF8.GetBytes(value);
@@ -508,9 +508,9 @@ namespace DatabaseManager
         }
         public void DeleteFileBytes(BinaryWriter writer, int recordsPerChunk)
         {
-            BINTableFields bFields = (BINTableFields)fields;
+            BINTableFields bFields = (BINTableFields)Fields;
             writer.BaseStream.Position = bFields.Size + (bFields.RecordSize * ID);
-            byte[] data = new byte[((BINTableFields)fields).RecordSize];
+            byte[] data = new byte[((BINTableFields)Fields).RecordSize];
             for (int i = 0; i < data.Length; i++) data[i] = 0x00;
             writer.Write(data, 0, data.Length);
 
@@ -526,34 +526,6 @@ namespace DatabaseManager
                 writer.Write(currentChunk, 0, bytesRead);
             } while (bytesRead == currentChunk.Length);
             writer.BaseStream.SetLength(Math.Max(0, writer.BaseStream.Length - bFields.RecordSize));
-        }
-
-        public override object GetValue(string field)
-        {
-            for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return values[i];
-            return null;
-        }
-        public override void SetValue(string field, object value)
-        {
-            if (value != null)
-            {
-                int fieldIndex = -1;
-                for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) fieldIndex = i;
-                if (fieldIndex == -1) throw new FieldNotFoundException(field);
-                values[fieldIndex] = value;
-                switch (fields.Fields[fieldIndex].DataType)
-                {
-                    case Datatype.Number:
-                        values[fieldIndex] = Convert.ToDouble(value);
-                        break;
-                    case Datatype.VarChar:
-                        values[fieldIndex] = (string)value;
-                        break;
-                    case Datatype.Integer:
-                        values[fieldIndex] = (int)value;
-                        break;
-                }
-            }
         }
     }
 }

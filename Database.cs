@@ -184,23 +184,52 @@ namespace DatabaseManager
     public abstract class Record
     {
         public uint ID;
-        protected TableFields fields;
+        protected TableFields Fields { get; set; }
         protected object[] values;
         private const int maxStringLength = 10;
-
-        public abstract object GetValue(string field);
+        
+        public object GetValue(string field)
+        {
+            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return values[i];
+            return null;
+        }
         public T GetValue<T>(string field)
         {
-            for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return (T)values[i];
+            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return (T)values[i];
             throw new FieldNotFoundException(field);
         }
-        public abstract void SetValue(string field, object value);
+        public object[] GetValues()
+        {
+            return values;
+        }
+        public void SetValue(string field, object value)
+        {
+            if (value != null)
+            {
+                int fieldIndex = -1;
+                for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) fieldIndex = i;
+                if (fieldIndex == -1) throw new FieldNotFoundException(field);
+                values[fieldIndex] = value;
+                switch (Fields.Fields[fieldIndex].DataType)
+                {
+                    case Datatype.Number:
+                        values[fieldIndex] = Convert.ToDouble(value);
+                        break;
+                    case Datatype.VarChar:
+                        values[fieldIndex] = (string)value;
+                        break;
+                    case Datatype.Integer:
+                        values[fieldIndex] = (int)value;
+                        break;
+                }
+            }
+        }
 
         public override string ToString()
         {
             string rowData = "";
-            for (int i = 0; i < fields.Count; i++)
-                switch (fields.Fields[i].DataType)
+            for (int i = 0; i < Fields.Count; i++)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         rowData += string.Format("{0:0.0000}, ", values[i]);
@@ -214,7 +243,7 @@ namespace DatabaseManager
                         rowData += string.Format("'{0}', ", outputString);
                         break;
                 }
-            if (fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
+            if (Fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
         }
     }

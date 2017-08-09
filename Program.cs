@@ -9,37 +9,40 @@ namespace DatabaseManager
         static void Main(string[] args)
         {
             Console.WriteLine("Loading database...");
-            BINDatabase database = new BINDatabase("C:\\BINData", false);
-            //CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
+            //BINDatabase database = new BINDatabase("C:\\BINData", false);
+            CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
             Console.WriteLine("Done!");
 
             Console.WriteLine("Starting timer...");
             Stopwatch watch = Stopwatch.StartNew();
 
-            Console.WriteLine(database.GetTable("TestTable").RecordCount);
-            Console.WriteLine(database.GetRecordByID("TestTable", 500000));
-            database.DeleteRecord("TestTable", database.GetRecordByID("TestTable", 500000));
-            database.SaveChanges();
-            Console.WriteLine(database.GetRecordByID("TestTable", 500000));
-            Console.WriteLine(database.GetTable("TestTable").RecordCount);
+            //Console.WriteLine(database.GetTable("TestTable").RecordCount);
+            //Console.WriteLine(database.GetRecordByID("TestTable", 500000));
+            //database.DeleteRecord("TestTable", database.GetRecordByID("TestTable", 500000));
+            //database.SaveChanges();
+            //Console.WriteLine(database.GetRecordByID("TestTable", 500000));
+            //Console.WriteLine(database.GetTable("TestTable").RecordCount);
 
             //Console.WriteLine(database);
 
-            //List<uint> recordBufferSizes = new List<uint>
-            //{
-            //    10,
-            //    10000,
-            //};
-            //List<ushort[]> varCharSizes = new List<ushort[]>
-            //{
-            //    new ushort[] { 32, 0 },
-            //    new ushort[] { 32, 32, 32, 32, 32, 32, 32, 32, 0, 0 }
-            //};
-            //database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
+            fieldSizes = new ushort[database.GetTable("TUI_D1_location_data_03-12-2017").FieldCount];
+
+            database.GetTable("TUI_D1_location_data_03-12-2017").SearchRecords(Callback);
+
+            List<uint> recordBufferSizes = new List<uint>
+            {
+                10,
+                10000,
+            };
+            List<ushort[]> varCharSizes = new List<ushort[]>
+            {
+                new ushort[] { 24, 0 },
+                new ushort[] { 32, 32, 32, 32, 32, 32, 32, 32, 0, 0 }
+            };
+            database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
 
             //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
             //GenerateRandomRecords(database, "TestTable", 1000000, true);
-            //((BINTable)database.GetTable("TestTable")).SearchRecords(Callback);
             //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "mac", "c0:63:94:44:52:77")) Console.WriteLine(record); ;
 
             watch.Stop();
@@ -50,9 +53,10 @@ namespace DatabaseManager
             Console.ReadKey();
         }
 
+        static ushort[] fieldSizes;
         static void Callback(Record record)
         {
-            Console.WriteLine(record);
+            record.GetValues();
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)

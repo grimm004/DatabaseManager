@@ -353,20 +353,20 @@ namespace DatabaseManager
         public CSVRecord(string valueString, uint ID, TableFields fields)
         {
             this.ID = ID;
-            this.fields = fields;
+            this.Fields = fields;
             LoadString(valueString);
         }
         public CSVRecord(object[] values, uint ID, TableFields fields)
         {
             this.ID = ID;
-            this.fields = fields;
+            this.Fields = fields;
             this.values = values;
         }
 
         public void LoadString(string valueString)
         {
-            values = new object[fields.Count];
-            string[] parts = new string[fields.Count];
+            values = new object[Fields.Count];
+            string[] parts = new string[Fields.Count];
             int currentPartIndex = 0;
             string currentPart = "";
             bool nonQuote = true;
@@ -390,9 +390,9 @@ namespace DatabaseManager
             }
             catch (IndexOutOfRangeException) { }
 
-            for (int i = 0; i < fields.Count; i++)
+            for (int i = 0; i < Fields.Count; i++)
             {
-                switch (fields.Fields[i].DataType)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         values[i] = Convert.ToDouble(parts[i]);
@@ -409,9 +409,9 @@ namespace DatabaseManager
         public string GetFileString()
         {
             string fileString = "";
-            for (int i = 0; i < fields.Count; i++)
+            for (int i = 0; i < Fields.Count; i++)
             {
-                switch (fields.Fields[i].DataType)
+                switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         fileString += ((double)values[i]).ToString("R");
@@ -425,35 +425,8 @@ namespace DatabaseManager
                 }
                 fileString += ",";
             }
-            if (fields.Count > 0) fileString = fileString.Remove(fileString.Length - 1);
+            if (Fields.Count > 0) fileString = fileString.Remove(fileString.Length - 1);
             return fileString;
-        }
-
-        public override object GetValue(string field)
-        {
-            for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) return values[i];
-            return null;
-        }
-        public override void SetValue(string field, object value)
-        {
-            if (value != null)
-            {
-                int fieldIndex = -1;
-                for (int i = 0; i < fields.Count; i++) if (fields.Fields[i].Name == field) fieldIndex = i;
-                values[fieldIndex] = value;
-                switch (fields.Fields[fieldIndex].DataType)
-                {
-                    case Datatype.VarChar:
-                        values[fieldIndex] = (string)value;
-                        break;
-                    case Datatype.Number:
-                        values[fieldIndex] = (double)value;
-                        break;
-                    case Datatype.Integer:
-                        values[fieldIndex] = (int)value;
-                        break;
-                }
-            }
         }
 
         public BINRecord ToBINRecord(BINTableFields fields)
