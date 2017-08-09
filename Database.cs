@@ -186,8 +186,8 @@ namespace DatabaseManager
         public uint ID;
         protected TableFields Fields { get; set; }
         protected object[] values;
-        private const int maxStringLength = 10;
-        
+        public static int maxStringOutputLength = 10;
+
         public object GetValue(string field)
         {
             for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return values[i];
@@ -239,12 +239,21 @@ namespace DatabaseManager
                         break;
                     case Datatype.VarChar:
                         string outputString = (string)values[i];
-                        if (outputString.Length > maxStringLength) outputString = outputString.Substring(0, maxStringLength);
+                        if (outputString.Length > maxStringOutputLength)
+                            outputString = outputString.Substring(0, maxStringOutputLength);
                         rowData += string.Format("'{0}', ", outputString);
                         break;
                 }
             if (Fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
+        }
+        public T ToObject<T>() where T : class, new()
+        {
+            T recordObject = new T();
+            Type recordObjectType = recordObject.GetType();
+            for (int i = 0; i < Fields.Count; i++)
+                recordObjectType.GetProperty(Fields.Fields[i].Name).SetValue(recordObject, values[i], null);
+            return recordObject;
         }
     }
 

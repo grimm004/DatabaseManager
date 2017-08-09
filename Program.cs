@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 
 namespace DatabaseManager
 {
-    class Program
+    internal class Program
     {
         static void Main(string[] args)
         {
             Console.WriteLine("Loading database...");
-            //BINDatabase database = new BINDatabase("C:\\BINData", false);
-            CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
+            BINDatabase database = new BINDatabase("C:\\BINData", false);
+            //CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
             Console.WriteLine("Done!");
 
             Console.WriteLine("Starting timer...");
@@ -25,25 +26,13 @@ namespace DatabaseManager
 
             //Console.WriteLine(database);
 
-            fieldSizes = new ushort[database.GetTable("TUI_D1_location_data_03-12-2017").FieldCount];
-
-            database.GetTable("TUI_D1_location_data_03-12-2017").SearchRecords(Callback);
-
-            List<uint> recordBufferSizes = new List<uint>
-            {
-                10,
-                10000,
-            };
-            List<ushort[]> varCharSizes = new List<ushort[]>
-            {
-                new ushort[] { 24, 0 },
-                new ushort[] { 32, 32, 32, 32, 32, 32, 32, 32, 0, 0 }
-            };
-            database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
-
             //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
             //GenerateRandomRecords(database, "TestTable", 1000000, true);
-            //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "mac", "c0:63:94:44:52:77")) Console.WriteLine(record); ;
+            //Record.maxStringOutputLength = 32;
+            //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "locationid", "PQU0001D1QUSBF")) Console.WriteLine(record);
+
+            LocationRecord lr = database.GetRecordByID("TUI_D1_location_data_03-12-2017", 100000).ToObject<LocationRecord>();
+            Console.WriteLine(lr.mac);
 
             watch.Stop();
 
@@ -53,10 +42,37 @@ namespace DatabaseManager
             Console.ReadKey();
         }
 
+        static CSVTableFields fields;
         static ushort[] fieldSizes;
         static void Callback(Record record)
         {
-            record.GetValues();
+            object[] values = record.GetValues();
+            for (int i = 0; i < fields.Fields.Length; i++)
+                if (fields.Fields[i].DataType == Datatype.VarChar)
+                    if (Encoding.UTF8.GetByteCount(((string)values[i])) > fieldSizes[i]) fieldSizes[i] = (ushort)Encoding.UTF8.GetByteCount(((string)values[i]));
+        }
+
+        static void ConvertDatabase(CSVDatabase database)
+        {
+            Console.WriteLine("Calculating field sizes...");
+            fieldSizes = new ushort[database.GetTable("TUI_D1_location_data_03-12-2017").FieldCount];
+            for (int i = 0; i < fieldSizes.Length; i++) fieldSizes[i] = 0x00;
+            fields = (CSVTableFields)database.GetTable("TUI_D1_location_data_03-12-2017").Fields;
+            database.GetTable("TUI_D1_location_data_03-12-2017").SearchRecords(Callback);
+            for (int i = 0; i < fieldSizes.Length; i++) fieldSizes[i] += (ushort)(fieldSizes[i] > 0x00 ? 0x02 : 0x00);
+            Console.WriteLine("Done");
+            Console.WriteLine("Converting database...");
+            List<uint> recordBufferSizes = new List<uint>
+            {
+                10,
+                10000,
+            };
+            List<ushort[]> varCharSizes = new List<ushort[]>
+            {
+                new ushort[] { 24, 0 },
+                fieldSizes,
+            };
+            database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)
@@ -84,5 +100,19 @@ namespace DatabaseManager
             database.SaveChanges();
             Console.WriteLine("Done!");
         }
+    }
+
+    internal class LocationRecord
+    {
+        public string mac { get; set; }
+        public string null1 { get; set; }
+        public string date { get; set; }
+        public string null2 { get; set; }
+        public string locationid { get; set; }
+        public string vendor { get; set; }
+        public string ship { get; set; }
+        public string deck { get; set; }
+        public double x { get; set; }
+        public double y { get; set; }
     }
 }
