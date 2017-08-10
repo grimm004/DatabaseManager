@@ -16,7 +16,7 @@ namespace DatabaseManager
     {
         protected List<Table> Tables { get; set; }
         public string Name { get; protected set; }
-        protected string tableFileExtention;
+        protected string TableFileExtention { get; set; }
 
         public abstract void CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
         public bool AddTable(Table newTable)
@@ -25,17 +25,51 @@ namespace DatabaseManager
             Tables.Add(newTable);
             return true;
         }
-        public abstract Table GetTable(string tableName);
-        public abstract void DeleteTable(string tableName);
+        public Table GetTable(string tableName)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table;
+            return null;
+        }
+        public void DeleteTable(string tableName)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) Tables.Remove(table);
+        }
         public int TableCount { get { return Tables.Count; } }
-        
-        public abstract Record GetRecordByID(string tableName, uint ID);
-        public abstract Record GetRecord(string tableName, string conditionField, object conditionValue);
-        public abstract Record[] GetRecords(string tableName, string conditionField, object conditionValue);
 
-        public abstract Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
-        public abstract void UpdateRecord(string tableName, Record record, object[] values);
-        public abstract void DeleteRecord(string tableName, Record record);
+        public void UpdateField(string tableName, string fieldName, string newFieldName)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) table.UpdateField(fieldName, newFieldName);
+        }
+        
+        public Record GetRecordByID(string tableName, uint ID)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
+            return null;
+        }
+        public Record GetRecord(string tableName, string conditionField, object conditionValue)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecord(conditionField, conditionValue);
+            return null;
+        }
+        public Record[] GetRecords(string tableName, string conditionField, object conditionValue)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecords(conditionField, conditionValue);
+            return null;
+        }
+
+        public Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
+            return null;
+        }
+        public void UpdateRecord(string tableName, Record record, object[] values)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) table.UpdateRecord(record, values);
+        }
+        public void DeleteRecord(string tableName, Record record)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) table.DeleteRecord(record);
+        }
 
         public override string ToString()
         {
@@ -66,13 +100,13 @@ namespace DatabaseManager
     public class ChangeCache
     {
         public List<Record> AddedRecords { get; protected set; }
-        public List<Record> EditedRecords { get; protected set; }
+        public List<Record> ChangedRecords { get; protected set; }
         public List<Record> DeletedRecords { get; protected set; }
 
         public ChangeCache()
         {
             AddedRecords = new List<Record>();
-            EditedRecords = new List<Record>();
+            ChangedRecords = new List<Record>();
             DeletedRecords = new List<Record>();
         }
     }
@@ -124,6 +158,13 @@ namespace DatabaseManager
         }
         public abstract Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null);
         
+        public void UpdateField(string fieldName, string newFieldName)
+        {
+            MarkForUpdate();
+            Fields.MarkForUpdate();
+            foreach (Field field in Fields.Fields) if (field.Name.ToLower() == fieldName.ToLower()) field.Update(newFieldName);
+        }
+
         public abstract void UpdateRecord(Record record, object[] values);
         public abstract void DeleteRecord(Record record);
 
@@ -147,6 +188,7 @@ namespace DatabaseManager
     public class TableFields
     {
         public Field[] Fields { get; set; }
+        public bool Edited { get; protected set; }
         public int Count { get { return Fields.Length; } }
         public int GetFieldID(string fieldName)
         {
@@ -165,12 +207,16 @@ namespace DatabaseManager
             if (Count > 0) fieldData = fieldData.Remove(fieldData.Length - 2, 2);
             return string.Format("Fields({0})", fieldData);
         }
+        public void MarkForUpdate()
+        {
+            Edited = true;
+        }
     }
 
     public abstract class Field
     {
-        public string Name { get; set; }
-        public Datatype DataType { get; set; }
+        public string Name { get; protected set; }
+        public Datatype DataType { get; protected set; }
 
         public Field() { Name = ""; DataType = Datatype.Null; }
         public Field(string name, Datatype dataType) { Name = name; DataType = dataType; }
@@ -178,6 +224,10 @@ namespace DatabaseManager
         public override string ToString()
         {
             return string.Format("Field(Name: '0', DataType: '{1}')", Name, DataType);
+        }
+        public void Update(string name)
+        {
+            Name = name;
         }
     }
 

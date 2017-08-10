@@ -9,7 +9,7 @@ namespace DatabaseManager
     {
         public BINDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
-            this.tableFileExtention = tableFileExtention;
+            this.TableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
             string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
             Tables = new List<Table>();
@@ -17,49 +17,10 @@ namespace DatabaseManager
             this.Name = name;
         }
         
-        public override Table GetTable(string tableName)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table;
-            return null;
-        }
         public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
-            string fileName = string.Format("{0}\\{1}{2}", Name, tableName, tableFileExtention);
+            string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
             if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new BINTable(fileName, tableName, (BINTableFields)fields));
-        }
-        public override void DeleteTable(string tableName)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) Tables.Remove(table);
-        }
-
-        public override Record GetRecordByID(string tableName, uint ID)
-        {
-            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
-            return null;
-        }
-        public override Record[] GetRecords(string tableName, string conditionField, object conditionValue)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
-            return null;
-        }
-        public override Record GetRecord(string tableName, string conditionField, object conditionValue)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecord(conditionField, conditionValue);
-            return null;
-        }
-
-        public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
-            return null;
-        }
-        public override void UpdateRecord(string tableName, Record record, object[] values)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) table.UpdateRecord(record, values);
-        }
-        public override void DeleteRecord(string tableName, Record record)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) table.DeleteRecord(record);
         }
 
         public override string ToString()
@@ -248,7 +209,7 @@ namespace DatabaseManager
         {
             MarkForUpdate();
             for (int i = 0; i < FieldCount; i++) record.SetValue(Fields.Fields[i].Name, values[i]);
-            Changes.EditedRecords.Add(record);
+            Changes.ChangedRecords.Add(record);
         }
         public override void DeleteRecord(Record record)
         {
@@ -277,13 +238,11 @@ namespace DatabaseManager
                 using (BinaryWriter writer = new BinaryWriter(File.Open(FileName, FileMode.Open)))
                 {
                     writer.BaseStream.Position = writer.BaseStream.Length;
-                    if (isNewFile) BINTableFields.WriteManifestBytes(writer);
+                    if (isNewFile || Fields.Edited) BINTableFields.WriteManifestBytes(writer);
                     foreach (BINRecord record in Changes.AddedRecords) record.WriteFileBytes(writer, false);
                     long position = writer.BaseStream.Position;
-                    foreach (BINRecord record in Changes.EditedRecords) record.WriteFileBytes(writer, true);
-                    writer.BaseStream.Position = position;
+                    foreach (BINRecord record in Changes.ChangedRecords) record.WriteFileBytes(writer, true);
                     foreach (BINRecord record in Changes.DeletedRecords) record.DeleteFileBytes(writer, 100);
-                    writer.BaseStream.Position = position;
                 }
                 isNewFile = false;
                 Changes = new ChangeCache();
@@ -363,6 +322,7 @@ namespace DatabaseManager
 
         public void WriteManifestBytes(BinaryWriter writer)
         {
+            writer.BaseStream.Position = 0;
             int manifestSize = 0;
             foreach (BINField field in Fields)
                 manifestSize += field.DataType != Datatype.VarChar ? FieldNameSize + sizeof(byte) : FieldNameSize + sizeof(byte) + sizeof(ushort);
@@ -374,6 +334,7 @@ namespace DatabaseManager
                 if (Fields[i].DataType == Datatype.VarChar)
                     writer.Write(BINFields[i].VarCharSize);
             }
+            Edited = false;
         }
 
         private void WriteFieldName(BinaryWriter writer, string fieldName)

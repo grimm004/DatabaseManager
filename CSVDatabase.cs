@@ -8,57 +8,17 @@ namespace DatabaseManager
     {
         public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
-            this.tableFileExtention = tableFileExtention;
+            this.TableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
             string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
             Tables = new List<Table>();
             foreach (string tableFile in tableFiles) Tables.Add(new CSVTable(tableFile));
             this.Name = name;
         }
-
-        public override Table GetTable(string tableName)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table;
-            return null;
-        }
         public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
-            string fileName = string.Format("{0}\\{1}{2}", Name, tableName, tableFileExtention);
+            string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
             if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
-        }
-        public override void DeleteTable(string tableName)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) Tables.Remove(table);
-        }
-
-        public override Record GetRecordByID(string tableName, uint ID)
-        {
-            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecordByID(ID);
-            return null;
-        }
-        public override Record GetRecord(string tableName, string conditionField, object conditionValue)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue)[0];
-            return null;
-        }
-        public override Record[] GetRecords(string tableName, string conditionField, object conditionValue)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.GetRecords(conditionField, conditionValue);
-            return null;
-        }
-
-        public override Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) return table.AddRecord(values, ifNotExists, conditionField, conditionValue);
-            return null;
-        }
-        public override void UpdateRecord(string tableName, Record record, object[] values)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) table.UpdateRecord(record, values);
-        }
-        public override void DeleteRecord(string tableName, Record record)
-        {
-            foreach (Table table in Tables) if (table.Name == tableName) table.DeleteRecord(record);
         }
 
         public override string ToString()
@@ -80,10 +40,8 @@ namespace DatabaseManager
     
     public class CSVTable : Table
     {
-        public CSVTable(string fileName, string name, CSVTableFields fields) : base(fileName, name, fields)
-        { }
-        public CSVTable(string fileName) : base(fileName)
-        { }
+        public CSVTable(string fileName, string name, CSVTableFields fields) : base(fileName, name, fields) { }
+        public CSVTable(string fileName) : base(fileName) { }
         public override void LoadTable()
         {
             string fieldData;

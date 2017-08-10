@@ -32,7 +32,12 @@ namespace DatabaseManager
             //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "locationid", "PQU0001D1QUSBF")) Console.WriteLine(record);
 
             LocationRecord lr = database.GetRecordByID("TUI_D1_location_data_03-12-2017", 100000).ToObject<LocationRecord>();
-            Console.WriteLine(lr.mac);
+            Console.WriteLine(lr.MAC);
+
+            //BINTable table = (BINTable)database.GetTable("TUI_D1_location_data_03-12-2017");
+            //foreach (Field field in table.Fields.Fields) table.UpdateField(field.Name, char.ToUpper(field.Name[0]) + field.Name.Substring(1));
+            //table.Save();
+            //foreach (Field field in table.Fields.Fields) Console.WriteLine(field.Name);
 
             watch.Stop();
 
@@ -104,15 +109,15 @@ namespace DatabaseManager
 
     internal class LocationRecord
     {
-        public string mac { get; set; }
-        public string null1 { get; set; }
-        public string date { get; set; }
-        public string null2 { get; set; }
-        public string locationid { get; set; }
-        public string vendor { get; set; }
-        public string ship { get; set; }
-        public string deck { get; set; }
-        public double x { get; set; }
-        public double y { get; set; }
+        public string MAC { get; set; }
+        public string Null1 { get; set; }
+        public string Date { get; set; }
+        public string Null2 { get; set; }
+        public string Locationid { get; set; }
+        public string Vendor { get; set; }
+        public string Ship { get; set; }
+        public string Deck { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
     }
 }
