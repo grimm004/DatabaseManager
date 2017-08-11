@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.IO;
 
 namespace DatabaseManager
 {
@@ -10,34 +11,19 @@ namespace DatabaseManager
         static void Main(string[] args)
         {
             Console.WriteLine("Loading database...");
-            BINDatabase database = new BINDatabase("C:\\BINData", false);
+            //BINDatabase database = new BINDatabase("C:\\BINData", false);
             //CSVDatabase database = new CSVDatabase("C:\\Data", false, ".csv");
             Console.WriteLine("Done!");
 
             Console.WriteLine("Starting timer...");
             Stopwatch watch = Stopwatch.StartNew();
 
-            //Console.WriteLine(database.GetTable("TestTable").RecordCount);
-            //Console.WriteLine(database.GetRecordByID("TestTable", 500000));
-            //database.DeleteRecord("TestTable", database.GetRecordByID("TestTable", 500000));
-            //database.SaveChanges();
-            //Console.WriteLine(database.GetRecordByID("TestTable", 500000));
-            //Console.WriteLine(database.GetTable("TestTable").RecordCount);
-
-            //Console.WriteLine(database);
-
-            //for (uint i = 0; i < 1000; i++) Console.WriteLine(database.GetRecordByID("TestTable", i));
-            //GenerateRandomRecords(database, "TestTable", 1000000, true);
-            //Record.maxStringOutputLength = 32;
-            //foreach (Record record in database.GetRecords("TUI_D1_location_data_03-12-2017", "locationid", "PQU0001D1QUSBF")) Console.WriteLine(record);
-
-            LocationRecord lr = database.GetRecordByID("TUI_D1_location_data_03-12-2017", 100000).ToObject<LocationRecord>();
-            Console.WriteLine(lr.MAC);
-
-            //BINTable table = (BINTable)database.GetTable("TUI_D1_location_data_03-12-2017");
-            //foreach (Field field in table.Fields.Fields) table.UpdateField(field.Name, char.ToUpper(field.Name[0]) + field.Name.Substring(1));
-            //table.Save();
-            //foreach (Field field in table.Fields.Fields) Console.WriteLine(field.Name);
+            using (FileStream file = File.Open("test.txt", FileMode.Open))
+            {
+                file.Position = 0;
+                byte[] data = Encoding.UTF8.GetBytes("New Data2");
+                file.Write(data, 0, data.Length);
+            }
 
             watch.Stop();
 
@@ -66,18 +52,18 @@ namespace DatabaseManager
             database.GetTable("TUI_D1_location_data_03-12-2017").SearchRecords(Callback);
             for (int i = 0; i < fieldSizes.Length; i++) fieldSizes[i] += (ushort)(fieldSizes[i] > 0x00 ? 0x02 : 0x00);
             Console.WriteLine("Done");
-            Console.WriteLine("Converting database...");
-            List<uint> recordBufferSizes = new List<uint>
-            {
-                10,
-                10000,
-            };
-            List<ushort[]> varCharSizes = new List<ushort[]>
-            {
-                new ushort[] { 24, 0 },
-                fieldSizes,
-            };
-            database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
+            //Console.WriteLine("Converting database...");
+            //List<uint> recordBufferSizes = new List<uint>
+            //{
+            //    10,
+            //    10000,
+            //};
+            //List<ushort[]> varCharSizes = new List<ushort[]>
+            //{
+            //    new ushort[] { 24, 0 },
+            //    fieldSizes,
+            //};
+            //database.ToBINDatabase("C:\\BINData", varCharSizes, recordBufferSizes, true);
         }
 
         static void GenerateRandomRecords(BINDatabase database, string tableName, int numRecords, bool createTable)

@@ -29,11 +29,11 @@ namespace DatabaseManager
             return string.Format("Database('{0}', {1} {2} ({3}))", Name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
 
-        public BINDatabase ToBINDatabase(string name, List<ushort[]> varCharSizes, List<uint> recordBufferSizes, bool createIfNotExists = true, string tableFileExtention = ".table")
+        public BINDatabase ToBINDatabase(string name, List<ushort[]> varCharSizes, List<uint> recordBufferSizes, bool createIfNotExists = true, string tableFileExtention = ".table", Action<Table, double> updateCommand = null)
         {
             BINDatabase newDatabase = new BINDatabase(name, createIfNotExists, tableFileExtention);
             for (int i = 0; i < TableCount; i++)
-                newDatabase.AddTable(((CSVTable)Tables[i]).ToBINTable(string.Format("{0}\\{1}{2}", newDatabase.Name, Tables[i].Name, tableFileExtention), Tables[i].Name, varCharSizes[i], recordBufferSizes[i]));
+                newDatabase.AddTable(((CSVTable)Tables[i]).ToBINTable(string.Format("{0}\\{1}{2}", newDatabase.Name, Tables[i].Name, tableFileExtention), Tables[i].Name, varCharSizes[i], recordBufferSizes[i], updateCommand));
             return newDatabase;
         }
     }
@@ -46,7 +46,13 @@ namespace DatabaseManager
         {
             string fieldData;
             using (StreamReader sr = new StreamReader(FileName)) fieldData = sr.ReadLine();
-            if (fieldData != null && fieldData.Contains(":"))
+            bool validHeader = true;
+            if (fieldData == null || fieldData == "")
+                validHeader = false;
+            else foreach (string currentField in fieldData.Split(','))
+                if (!currentField.Contains(":"))
+                    validHeader = false;
+            if (validHeader)
             {
                 Fields = new CSVTableFields(fieldData);
                 Changes = new ChangeCache();
@@ -197,10 +203,10 @@ namespace DatabaseManager
                 sr.Close();
             }
         }
-        public BINTable ToBINTable(string fileName, string name, ushort[] varCharSizes, uint recordBufferSize = 100)
+        public BINTable ToBINTable(string fileName, string name, ushort[] varCharSizes, uint recordBufferSize = 100, Action<Table, double> updateCommand = null)
         {
             BINTableFields fields = ((CSVTableFields)Fields).ToBINTableFields(varCharSizes);
-            BINTable newTable = new BINTable(fileName, name, fields);
+             BINTable newTable = new BINTable(fileName, name, fields);
             List<Record> records = new List<Record>();
             string currentLine;
             uint currentRecordId = 0;
@@ -213,12 +219,14 @@ namespace DatabaseManager
                     newTable.AddRecord(new CSVRecord(currentLine, currentRecordId++, Fields).ToBINRecord(fields));
                     if (currentRecordId % recordBufferSize == 0)
                     {
-                        Console.WriteLine("Updating Table File (Current ID {0}/{1}) ({2:0.0}%)...", currentRecordId, RecordCount, 100 * currentRecordId / RecordCount);
+                        Console.WriteLine("Updating Table File (Current ID {0}/{1}) ({2:0.0}%)...", currentRecordId, RecordCount, 100d * currentRecordId / RecordCount);
                         newTable.Save();
+                        updateCommand?.Invoke(this, (double)currentRecordId / RecordCount);
                     }
                 }
-                Console.WriteLine("Updating Table File (Finalising)...");
+                //Console.WriteLine("Updating Table File (Finalising)...");
                 newTable.Save();
+                updateCommand?.Invoke(this, 100);
             }
             return newTable;
         }

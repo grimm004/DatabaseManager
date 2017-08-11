@@ -14,7 +14,7 @@ namespace DatabaseManager
 
     public abstract class Database
     {
-        protected List<Table> Tables { get; set; }
+        public List<Table> Tables { get; protected set; }
         public string Name { get; protected set; }
         protected string TableFileExtention { get; set; }
 
@@ -192,7 +192,7 @@ namespace DatabaseManager
         public int Count { get { return Fields.Length; } }
         public int GetFieldID(string fieldName)
         {
-            for (int i = 0; i < Count; i++) if (Fields[i].Name == fieldName) return i;
+            for (int i = 0; i < Count; i++) if (Fields[i].Name.ToLower() == fieldName.ToLower()) return i;
             return -1;
         }
         public Datatype GetFieldType(string fieldName)
