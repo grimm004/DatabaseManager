@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using DatabaseManagerLibrary.BIN;
+using DatabaseManagerLibrary.CSV;
 using System.Diagnostics;
 using System.Text;
 using System.IO;
 
-namespace DatabaseManager
+namespace DatabaseManagerLibrary
 {
-    internal class Program
+    internal class Testing
     {
         static void Main(string[] args)
         {

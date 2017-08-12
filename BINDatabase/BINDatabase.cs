@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace DatabaseManager
+namespace DatabaseManagerLibrary.BIN
 {
     public class BINDatabase : Database
     {

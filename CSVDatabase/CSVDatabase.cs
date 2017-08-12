@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using DatabaseManagerLibrary.BIN;
 
-namespace DatabaseManager
+namespace DatabaseManagerLibrary.CSV
 {
     public class CSVDatabase : Database
     {

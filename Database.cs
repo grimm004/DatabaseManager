@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace DatabaseManager
+namespace DatabaseManagerLibrary
 {
     public enum Datatype
     {

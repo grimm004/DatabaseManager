@@ -5,10 +5,10 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{39EFFD9A-84D2-4AD0-9842-60E5EE7FF419}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DatabaseManager</RootNamespace>
-    <AssemblyName>DatabaseManager</AssemblyName>
+    <RootNamespace>DatabaseManagerLibrary</RootNamespace>
+    <AssemblyName>DatabaseManagerLibrary</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -84,6 +84,9 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -94,11 +97,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BINDatabase.cs" />
-    <Compile Include="CSVDatabase.cs" />
+    <Compile Include="BINDatabase\BINDatabase.cs" />
+    <Compile Include="CSVDatabase\CSVDatabase.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="Ordering.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="Testing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
