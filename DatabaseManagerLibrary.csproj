@@ -100,8 +100,6 @@
     <Compile Include="BINDatabase\BINDatabase.cs" />
     <Compile Include="CSVDatabase\CSVDatabase.cs" />
     <Compile Include="Database.cs" />
-    <Compile Include="Ordering.cs" />
-    <Compile Include="Testing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

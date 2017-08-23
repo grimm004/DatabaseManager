@@ -68,7 +68,7 @@ namespace DatabaseManagerLibrary.CSV
                 uint lineCount = 0;
                 using (StreamReader sr = new StreamReader(FileName))
                     while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
-                return lineCount;
+                return --lineCount;
             }
         }
         public uint GetCurrnetId()
@@ -101,7 +101,7 @@ namespace DatabaseManagerLibrary.CSV
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
-                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
                 {
                     Record record = new CSVRecord(currentLine, currentRecordId++, Fields);
 
@@ -117,6 +117,9 @@ namespace DatabaseManagerLibrary.CSV
                         case Datatype.VarChar:
                             if ((string)record.GetValue(conditionField) == (string)conditionValue) records.Add(record);
                             break;
+                        case Datatype.DateTime:
+                            if ((DateTime)record.GetValue(conditionField) == (DateTime)conditionValue) records.Add(record);
+                            break;
                     }
                 }
             }
@@ -130,7 +133,7 @@ namespace DatabaseManagerLibrary.CSV
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
-                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
                     records.Add(new CSVRecord(currentLine, currentRecordId++, Fields));
             }
             return records.ToArray();
@@ -140,7 +143,7 @@ namespace DatabaseManagerLibrary.CSV
             StreamReader sr = new StreamReader(FileName); sr.ReadLine();
             string currentLine;
             uint currentRecordId = 0;
-            while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+            while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
                 callback?.Invoke(new CSVRecord(currentLine, currentRecordId++, Fields));
         }
 
@@ -215,7 +218,7 @@ namespace DatabaseManagerLibrary.CSV
             using (StreamReader sr = new StreamReader(FileName))
             {
                 sr.ReadLine();
-                while ((currentLine = sr.ReadLine()) != "" && currentLine != null && !sr.EndOfStream)
+                while ((currentLine = sr.ReadLine()) != "" && currentLine != null)
                 {
                     newTable.AddRecord(new CSVRecord(currentLine, currentRecordId++, Fields).ToBINRecord(fields));
                     if (currentRecordId % recordBufferSize == 0)
@@ -262,9 +265,15 @@ namespace DatabaseManagerLibrary.CSV
                 case "integer":
                     return Datatype.Integer;
                 case "float":
+                case "double":
+                case "real":
                 case "number":
                     return Datatype.Number;
+                case "datetime":
+                case "date":
+                    return Datatype.DateTime;
                 case "string":
+                case "str":
                 case "text":
                 default:
                     return Datatype.VarChar;
@@ -279,6 +288,8 @@ namespace DatabaseManagerLibrary.CSV
                     return "number";
                 case Datatype.Integer:
                     return "integer";
+                case Datatype.DateTime:
+                    return "datetime";
                 case Datatype.VarChar:
                 default:
                     return "string";
@@ -370,6 +381,9 @@ namespace DatabaseManagerLibrary.CSV
                     case Datatype.VarChar:
                         values[i] = Convert.ToString(parts[i]);
                         break;
+                    case Datatype.DateTime:
+                        values[i] = DateTime.Parse(Convert.ToString(parts[i]));
+                        break;
                 }
             }
         }
@@ -388,6 +402,9 @@ namespace DatabaseManagerLibrary.CSV
                         break;
                     case Datatype.VarChar:
                         fileString += string.Format("\"{0}\"", Convert.ToString((string)values[i]));
+                        break;
+                    case Datatype.DateTime:
+                        fileString += ((DateTime)values[i]).ToString("o");
                         break;
                 }
                 fileString += ",";

@@ -88,11 +88,14 @@ namespace DatabaseManagerLibrary.BIN
                             valid = Convert.ToDouble(conditionValue) == reader.ReadDouble();
                             break;
                         case Datatype.Integer:
-                            valid = (int)conditionValue == (int)reader.ReadInt32();
+                            valid = (int)conditionValue == reader.ReadInt32();
                             break;
                         case Datatype.VarChar:
                             int stringSize = reader.ReadInt16();
-                            valid = (string)conditionValue == (string)Encoding.UTF8.GetString(reader.ReadBytes(stringSize));
+                            valid = (string)conditionValue == Encoding.UTF8.GetString(reader.ReadBytes(stringSize));
+                            break;
+                        case Datatype.DateTime:
+                            valid = (DateTime)conditionValue == DateTime.FromBinary(reader.ReadInt64());
                             break;
                     }
 
@@ -171,6 +174,10 @@ namespace DatabaseManagerLibrary.BIN
                         position += sizeof(ushort);
                         valid = (string)conditionValue == Encoding.UTF8.GetString(chunk, (int)position, stringSize);
                         position += BINTableFields.BINFields[fieldID].Size;
+                        break;
+                    case Datatype.DateTime:
+                        valid = (DateTime)conditionValue == DateTime.FromBinary(BitConverter.ToInt64(chunk, (int)position));
+                        position += sizeof(long);
                         break;
                 }
 
@@ -366,6 +373,9 @@ namespace DatabaseManagerLibrary.BIN
                 case Datatype.VarChar:
                     VarCharSize = varCharSize;
                     break;
+                case Datatype.DateTime:
+                    Size = sizeof(long);
+                    break;
                 default:
                     break;
             }
@@ -413,6 +423,9 @@ namespace DatabaseManagerLibrary.BIN
                         values[i] = Encoding.UTF8.GetString(reader.ReadBytes(varCharSize));
                         reader.BaseStream.Position += ((BINField)Fields.Fields[i]).VarCharSize - varCharSize;
                         break;
+                    case Datatype.DateTime:
+                        values[i] = DateTime.FromBinary(reader.ReadInt64());
+                        break;
                 }
             }
         }
@@ -439,6 +452,10 @@ namespace DatabaseManagerLibrary.BIN
                         values[i] = Encoding.UTF8.GetString(data, (int)position, varCharSize);
                         position += ((BINField)Fields.Fields[i]).VarCharSize;
                         break;
+                    case Datatype.DateTime:
+                        values[i] = DateTime.FromBinary(BitConverter.ToInt64(data, (int)position));
+                        position += sizeof(long);
+                        break;
                 }
         }
 
@@ -464,6 +481,9 @@ namespace DatabaseManagerLibrary.BIN
                         writer.Write(stringBytes);
                         uint offset = (uint)stringBytes.Length;
                         for (uint j = offset; j < field.VarCharSize; j++) writer.Write((byte)0x00);
+                        break;
+                    case Datatype.DateTime:
+                        writer.Write(((DateTime)values[i]).Ticks);
                         break;
                 }
         }

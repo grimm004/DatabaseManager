@@ -9,6 +9,7 @@ namespace DatabaseManagerLibrary
         Number,
         Integer,
         VarChar,
+        DateTime,
         Null,
     }
 
@@ -271,6 +272,9 @@ namespace DatabaseManagerLibrary
                     case Datatype.Integer:
                         values[fieldIndex] = (int)value;
                         break;
+                    case Datatype.DateTime:
+                        values[fieldIndex] = value;
+                        break;
                 }
             }
         }
@@ -293,6 +297,9 @@ namespace DatabaseManagerLibrary
                             outputString = outputString.Substring(0, maxStringOutputLength);
                         rowData += string.Format("'{0}', ", outputString);
                         break;
+                    case Datatype.DateTime:
+                        rowData += string.Format("{0}, ", values[i] != null ? ((DateTime)values[i]).ToString() : "null");
+                        break;
                 }
             if (Fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
             return string.Format("Record(ID {0}, Values ({1}))", ID, rowData);
@@ -302,7 +309,7 @@ namespace DatabaseManagerLibrary
             T recordObject = new T();
             Type recordObjectType = recordObject.GetType();
             for (int i = 0; i < Fields.Count; i++)
-                recordObjectType.GetProperty(Fields.Fields[i].Name).SetValue(recordObject, values[i], null);
+                recordObjectType.GetProperty(Fields.Fields[i].Name)?.SetValue(recordObject, values[i], null);
             return recordObject;
         }
     }
