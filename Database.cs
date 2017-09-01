@@ -16,8 +16,15 @@ namespace DatabaseManagerLibrary
     public abstract class Database
     {
         public List<Table> Tables { get; protected set; }
+        protected List<Table> DeletedTables { get; set; }
         public string Name { get; protected set; }
         protected string TableFileExtention { get; set; }
+
+        public Database()
+        {
+            Tables = new List<Table>();
+            DeletedTables = new List<Table>();
+        }
 
         public abstract void CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
         public bool AddTable(Table newTable)
@@ -33,7 +40,7 @@ namespace DatabaseManagerLibrary
         }
         public void DeleteTable(string tableName)
         {
-            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) Tables.Remove(table);
+            for (int i = 0; i < TableCount; i++) if (Tables[i].Name.ToLower() == tableName.ToLower()) DeletedTables.Add(Tables[i]);
         }
         public int TableCount { get { return Tables.Count; } }
 
@@ -55,7 +62,17 @@ namespace DatabaseManagerLibrary
         public Record[] GetRecords(string tableName, string conditionField, object conditionValue)
         {
             foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecords(conditionField, conditionValue);
-            return null;
+            return new Record[0];
+        }
+        public Record[] GetRecords(string tableName)
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecords();
+            return new Record[0];
+        }
+        public T[] GetRecords<T>(string tableName) where T : class, new()
+        {
+            foreach (Table table in Tables) if (table.Name.ToLower() == tableName.ToLower()) return table.GetRecords<T>();
+            return new T[0];
         }
 
         public Record AddRecord(string tableName, object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)
@@ -95,6 +112,8 @@ namespace DatabaseManagerLibrary
         public void SaveChanges()
         {
             foreach (Table table in Tables) table.Save();
+            foreach (Table deletedTable in DeletedTables) { File.Delete(deletedTable.FileName); Tables.Remove(deletedTable); }
+            DeletedTables = new List<Table>();
         }
     }
 
@@ -146,6 +165,13 @@ namespace DatabaseManagerLibrary
         public abstract Record[] GetRecords(string conditionField, object conditionValue);
         public abstract Record GetRecord(string conditionField, object conditionValue);
         public abstract void SearchRecords(Action<Record> callback);
+        public T[] GetRecords<T>() where T : class, new()
+        {
+            Record[] records = GetRecords();
+            T[] objects = new T[records.Length];
+            for (int i = 0; i < records.Length; i++) objects[i] = records[i].ToObject<T>();
+            return objects;
+        }
 
         public Record AddRecord(Record record)
         {
@@ -168,6 +194,7 @@ namespace DatabaseManagerLibrary
 
         public abstract void UpdateRecord(Record record, object[] values);
         public abstract void DeleteRecord(Record record);
+        public abstract void DeleteRecord(uint id);
 
         public bool RecordExists(string conditionField, object conditionValue)
         {
@@ -186,7 +213,7 @@ namespace DatabaseManagerLibrary
         public abstract void Save();
     }
 
-    public class TableFields
+    public abstract class TableFields
     {
         public Field[] Fields { get; set; }
         public bool Edited { get; protected set; }

@@ -223,6 +223,11 @@ namespace DatabaseManagerLibrary.BIN
             MarkForUpdate();
             Changes.DeletedRecords.Add(record);
         }
+        public override void DeleteRecord(uint id)
+        {
+            MarkForUpdate();
+            Changes.DeletedRecords.Add(GetRecordByID(id));
+        }
 
         public void UpdateProperties()
         {

@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using DatabaseManagerLibrary.BIN;
+using System.Text;
 
 namespace DatabaseManagerLibrary.CSV
 {
     public class CSVDatabase : Database
     {
-        public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
+        public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".csv")
         {
             this.TableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
@@ -182,7 +183,27 @@ namespace DatabaseManagerLibrary.CSV
         }
         public override void DeleteRecord(Record record)
         {
-            throw new NotImplementedException();
+            MarkForUpdate();
+            Changes.DeletedRecords.Add(record);
+        }
+        public override void DeleteRecord(uint id)
+        {
+            MarkForUpdate();
+            Changes.DeletedRecords.Add(GetRecordByID(id));
+        }
+
+        private void FileDeleteRecord(string tempFile, CSVRecord record)
+        {
+            using (StreamWriter writer = new StreamWriter(tempFile, false))
+                using (StreamReader reader = new StreamReader(FileName, true))
+                {
+                    writer.WriteLine(reader.ReadLine()); // Header Line
+                    string currentLine;
+                    while ((currentLine = reader.ReadLine()) != null)
+                        if (String.Compare(currentLine, record.GetFileString()) != 0) writer.WriteLine(currentLine);
+                }
+            File.Delete(FileName);
+            File.Move(tempFile, FileName);
         }
 
         public override void MarkForUpdate()
@@ -200,11 +221,12 @@ namespace DatabaseManagerLibrary.CSV
 
             if (Edited)
             {
+                string tempFile = $"{ FileName }.temp";
                 Edited = false;
-                StreamWriter sr = new StreamWriter(FileName, true);
-                foreach (CSVRecord record in Changes.AddedRecords) sr.WriteLine(record.GetFileString());
+                using (StreamWriter writer = new StreamWriter(FileName, true))
+                    foreach (CSVRecord record in Changes.AddedRecords) writer.WriteLine(record.GetFileString());
+                foreach (CSVRecord record in Changes.DeletedRecords) FileDeleteRecord(tempFile, record);
                 Changes = new ChangeCache();
-                sr.Close();
             }
         }
         public BINTable ToBINTable(string fileName, string name, ushort[] varCharSizes, uint recordBufferSize = 100, Action<Table, double> updateCommand = null)
@@ -349,6 +371,7 @@ namespace DatabaseManagerLibrary.CSV
             string currentPart = "";
             bool nonQuote = true;
             bool inQuote = false;
+            bool inEscape = false;
             foreach (char character in valueString)
             {
                 if (character == ',' && !inQuote)
@@ -357,6 +380,9 @@ namespace DatabaseManagerLibrary.CSV
                     parts[currentPartIndex++] = currentPart;
                     currentPart = "";
                 }
+                else if (character == '\\' && inQuote) inEscape = true;
+                else if (character == '"' && inEscape) { currentPart += character; inEscape = false; }
+                else if (inEscape) { currentPart += "\\" + character; inEscape = false; }
                 else if (character == '"' && !inQuote) { inQuote = true; nonQuote = false; }
                 else if (character == '"' && inQuote) { inQuote = false; nonQuote = true; }
                 else if (inQuote || nonQuote) currentPart += character;
@@ -401,7 +427,7 @@ namespace DatabaseManagerLibrary.CSV
                         fileString += Convert.ToString((int)values[i]);
                         break;
                     case Datatype.VarChar:
-                        fileString += string.Format("\"{0}\"", Convert.ToString((string)values[i]));
+                        fileString += string.Format("\"{0}\"", Convert.ToString((string)values[i]).Replace("\"", "\\\""));
                         break;
                     case Datatype.DateTime:
                         fileString += ((DateTime)values[i]).ToString("o");
