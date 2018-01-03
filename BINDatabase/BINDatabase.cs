@@ -42,18 +42,18 @@ namespace DatabaseManagerLibrary.BIN
     {
         public BINTableFields BINTableFields { get { return (BINTableFields)Fields; } }
 
-        public int recordsPerChunk = 10;
+        public readonly int recordsPerChunk = 10;
 
-        private bool isNewFile;
+        private bool IsNewFile { get; set; }
 
         private uint recordCount;
         public override uint RecordCount { get { return recordCount; } }
         public uint CurrentID { get; protected set; }
 
         public BINTable(string fileName, string name, BINTableFields fields) : base(fileName, name, fields)
-        { CurrentID = 0; isNewFile = true; MarkForUpdate(); }
+        { CurrentID = 0; IsNewFile = true; MarkForUpdate(); }
         public BINTable(string fileName) : base(fileName)
-        { isNewFile = false; }
+        { IsNewFile = false; }
         public override void LoadTable()
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
@@ -251,18 +251,18 @@ namespace DatabaseManagerLibrary.BIN
         {
             if (Edited)
             {
-                if (isNewFile) File.Create(FileName).Close();
+                if (IsNewFile) File.Create(FileName).Close();
                 Edited = false;
                 using (BinaryWriter writer = new BinaryWriter(File.Open(FileName, FileMode.Open)))
                 {
                     writer.BaseStream.Position = writer.BaseStream.Length;
-                    if (isNewFile || Fields.Edited) BINTableFields.WriteManifestBytes(writer);
+                    if (IsNewFile || Fields.Edited) BINTableFields.WriteManifestBytes(writer);
                     foreach (BINRecord record in Changes.AddedRecords) record.WriteFileBytes(writer, false);
                     long position = writer.BaseStream.Position;
                     foreach (BINRecord record in Changes.ChangedRecords) record.WriteFileBytes(writer, true);
                     foreach (BINRecord record in Changes.DeletedRecords) record.DeleteFileBytes(writer, 100);
                 }
-                isNewFile = false;
+                IsNewFile = false;
                 Changes = new ChangeCache();
                 UpdateProperties();
             }
@@ -369,8 +369,7 @@ namespace DatabaseManagerLibrary.BIN
         public uint Size { get; protected set; }
         public uint Offset { get; set; }
         public ushort VarCharSize { get { return (ushort)(Size - 2); } set { Size = value + (uint)2; } }
-
-        //public BINField() : base() { Size = 0; Offset = 0; }
+        
         public BINField(string name, Datatype dataType, ushort varCharSize = 0) : base(name, dataType)
         {
             switch (dataType)
@@ -392,7 +391,6 @@ namespace DatabaseManagerLibrary.BIN
             }
             Offset = 0;
         }
-        //public BINField(string name, Datatype dataType, uint size, uint offset) : base(name, dataType) { Size = size; Offset = offset; }
     }
 
     public class BINRecord : Record

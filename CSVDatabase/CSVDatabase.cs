@@ -348,7 +348,7 @@ namespace DatabaseManagerLibrary.CSV
 
     public class CSVField : Field
     {
-        public CSVField() : base() { }
+        public CSVField() { }
         public CSVField(string name, Datatype dataType) : base(name, dataType) { }
 
         public BINField ToBINField()
