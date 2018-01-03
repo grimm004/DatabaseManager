@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using DatabaseManagerLibrary.BIN;
-using System.Text;
 
 namespace DatabaseManagerLibrary.CSV
 {
@@ -10,17 +9,23 @@ namespace DatabaseManagerLibrary.CSV
     {
         public CSVDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".csv")
         {
-            this.TableFileExtention = tableFileExtention;
+            TableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
             string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
             Tables = new List<Table>();
             foreach (string tableFile in tableFiles) Tables.Add(new CSVTable(tableFile));
-            this.Name = name;
+            Name = name;
         }
-        public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
+        public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
             string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName))
+            {
+                Table table = new CSVTable(fileName, tableName, (CSVTableFields)fields);
+                Tables.Add(table);
+                return table;
+            }
+            return GetTable(tableName);
         }
 
         public override string ToString()
@@ -66,10 +71,14 @@ namespace DatabaseManagerLibrary.CSV
         {
             get
             {
-                uint lineCount = 0;
-                using (StreamReader sr = new StreamReader(FileName))
-                    while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
-                return --lineCount;
+                if (File.Exists(FileName))
+                {
+                    uint lineCount = 0;
+                    using (StreamReader sr = new StreamReader(FileName))
+                        while (!sr.EndOfStream) { sr.ReadLine(); lineCount++; }
+                    return --lineCount + (uint)Changes.AddedRecords.Count - (uint)Changes.DeletedRecords.Count;
+                }
+                return (uint)Changes.AddedRecords.Count - (uint)Changes.DeletedRecords.Count;
             }
         }
         public uint GetCurrnetId()
@@ -360,12 +369,12 @@ namespace DatabaseManagerLibrary.CSV
         {
             this.ID = ID;
             this.Fields = fields;
-            this.values = values;
+            this.Values = values;
         }
 
         public void LoadString(string valueString)
         {
-            values = new object[Fields.Count];
+            Values = new object[Fields.Count];
             string[] parts = new string[Fields.Count];
             int currentPartIndex = 0;
             string currentPart = "";
@@ -399,16 +408,16 @@ namespace DatabaseManagerLibrary.CSV
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        values[i] = Convert.ToDouble(parts[i]);
+                        Values[i] = Convert.ToDouble(parts[i]);
                         break;
                     case Datatype.Integer:
-                        values[i] = Convert.ToInt32(parts[i]);
+                        Values[i] = Convert.ToInt32(parts[i]);
                         break;
                     case Datatype.VarChar:
-                        values[i] = Convert.ToString(parts[i]);
+                        Values[i] = Convert.ToString(parts[i]);
                         break;
                     case Datatype.DateTime:
-                        values[i] = DateTime.Parse(Convert.ToString(parts[i]));
+                        Values[i] = DateTime.Parse(Convert.ToString(parts[i]));
                         break;
                 }
             }
@@ -421,16 +430,16 @@ namespace DatabaseManagerLibrary.CSV
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        fileString += ((double)values[i]).ToString("R");
+                        fileString += ((double)Values[i]).ToString("R");
                         break;
                     case Datatype.Integer:
-                        fileString += Convert.ToString((int)values[i]);
+                        fileString += Convert.ToString((int)Values[i]);
                         break;
                     case Datatype.VarChar:
-                        fileString += string.Format("\"{0}\"", Convert.ToString((string)values[i]).Replace("\"", "\\\""));
+                        fileString += string.Format("\"{0}\"", Convert.ToString((string)Values[i]).Replace("\"", "\\\""));
                         break;
                     case Datatype.DateTime:
-                        fileString += ((DateTime)values[i]).ToString("o");
+                        fileString += ((DateTime)Values[i]).ToString("o");
                         break;
                 }
                 fileString += ",";
@@ -441,7 +450,7 @@ namespace DatabaseManagerLibrary.CSV
 
         public BINRecord ToBINRecord(BINTableFields fields)
         {
-            return new BINRecord(values, ID, fields);
+            return new BINRecord(Values, ID, fields);
         }
     }
 }
