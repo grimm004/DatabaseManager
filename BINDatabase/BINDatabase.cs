@@ -5,6 +5,9 @@ using System.Text;
 
 namespace DatabaseManagerLibrary.BIN
 {
+    /// <summary>
+    /// Represents a Binary database
+    /// </summary>
     public class BINDatabase : Database
     {
         public BINDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
@@ -17,10 +20,16 @@ namespace DatabaseManagerLibrary.BIN
             this.Name = name;
         }
         
-        public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
+        public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
             string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new BINTable(fileName, tableName, (BINTableFields)fields));
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName))
+            {
+                Table table = new BINTable(fileName, tableName, (BINTableFields)fields);
+                Tables.Add(table);
+                return table;
+            }
+            return null;
         }
 
         public override string ToString()
@@ -31,7 +40,10 @@ namespace DatabaseManagerLibrary.BIN
             return string.Format("Database('{0}', {1} {2} ({3}))", Name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
     }
-    
+
+    /// <summary>
+    /// Represents a Table for a Binary Database
+    /// </summary>
     public class BINTable : Table
     {
         public BINTableFields BINTableFields { get { return (BINTableFields)Fields; } }
@@ -263,6 +275,9 @@ namespace DatabaseManagerLibrary.BIN
         }
     }
     
+    /// <summary>
+    /// Represents the collection of Fields for the Binary Database
+    /// </summary>
     public class BINTableFields : TableFields
     {
         public BINField[] BINFields { get { return Array.ConvertAll(Fields, item => (BINField)item); } }
@@ -358,6 +373,9 @@ namespace DatabaseManagerLibrary.BIN
         }
     }
 
+    /// <summary>
+    /// Represents a single Field for a Binary Database
+    /// </summary>
     public class BINField : Field
     {
         public uint Size { get; protected set; }
@@ -389,6 +407,9 @@ namespace DatabaseManagerLibrary.BIN
         //public BINField(string name, Datatype dataType, uint size, uint offset) : base(name, dataType) { Size = size; Offset = offset; }
     }
 
+    /// <summary>
+    /// Represents a single Record for a Binary Database
+    /// </summary>
     public class BINRecord : Record
     {
         public BINRecord(object[] values, uint ID, BINTableFields fields)

@@ -17,10 +17,16 @@ namespace DatabaseManagerLibrary.CSV
             foreach (string tableFile in tableFiles) Tables.Add(new CSVTable(tableFile));
             this.Name = name;
         }
-        public override void CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
+        public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
             string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
-            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName)) Tables.Add(new CSVTable(fileName, tableName, (CSVTableFields)fields));
+            if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName))
+            {
+                Table table = new CSVTable(fileName, tableName, (CSVTableFields)fields);
+                Tables.Add(table);
+                return table;
+            }
+            return null;
         }
 
         public override string ToString()

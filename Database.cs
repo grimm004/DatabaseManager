@@ -26,7 +26,7 @@ namespace DatabaseManagerLibrary
             DeletedTables = new List<Table>();
         }
 
-        public abstract void CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
+        public abstract Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true);
         public bool AddTable(Table newTable)
         {
             foreach (Table table in Tables) if (table.Name == newTable.Name) return false;
