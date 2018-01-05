@@ -261,24 +261,23 @@ namespace DatabaseManagerLibrary
 
     public abstract class Record
     {
-        public uint ID;
+        public uint ID { get; set; }
         protected TableFields Fields { get; set; }
-        protected object[] values;
-        public static int maxStringOutputLength = 10;
+        protected object[] Values { get; set; }
 
         public object GetValue(string field)
         {
-            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return values[i];
+            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return Values[i];
             return null;
         }
         public T GetValue<T>(string field)
         {
-            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return (T)values[i];
+            for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) return (T)Values[i];
             throw new FieldNotFoundException(field);
         }
         public object[] GetValues()
         {
-            return values;
+            return Values;
         }
         public void SetValue(string field, object value)
         {
@@ -287,25 +286,26 @@ namespace DatabaseManagerLibrary
                 int fieldIndex = -1;
                 for (int i = 0; i < Fields.Count; i++) if (Fields.Fields[i].Name == field) fieldIndex = i;
                 if (fieldIndex == -1) throw new FieldNotFoundException(field);
-                values[fieldIndex] = value;
+                Values[fieldIndex] = value;
                 switch (Fields.Fields[fieldIndex].DataType)
                 {
                     case Datatype.Number:
-                        values[fieldIndex] = Convert.ToDouble(value);
+                        Values[fieldIndex] = Convert.ToDouble(value);
                         break;
                     case Datatype.VarChar:
-                        values[fieldIndex] = (string)value;
+                        Values[fieldIndex] = (string)value;
                         break;
                     case Datatype.Integer:
-                        values[fieldIndex] = (int)value;
+                        Values[fieldIndex] = (int)value;
                         break;
                     case Datatype.DateTime:
-                        values[fieldIndex] = value;
+                        Values[fieldIndex] = value;
                         break;
                 }
             }
         }
 
+        public static int maxStringOutputLength = 10;
         public override string ToString()
         {
             string rowData = "";
@@ -313,19 +313,19 @@ namespace DatabaseManagerLibrary
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        rowData += string.Format("{0:0.0000}, ", values[i]);
+                        rowData += string.Format("{0:0.0000}, ", Values[i]);
                         break;
                     case Datatype.Integer:
-                        rowData += string.Format("{0}, ", (int)values[i]);
+                        rowData += string.Format("{0}, ", (int)Values[i]);
                         break;
                     case Datatype.VarChar:
-                        string outputString = (string)values[i];
+                        string outputString = (string)Values[i];
                         if (outputString.Length > maxStringOutputLength)
                             outputString = outputString.Substring(0, maxStringOutputLength);
                         rowData += string.Format("'{0}', ", outputString);
                         break;
                     case Datatype.DateTime:
-                        rowData += string.Format("{0}, ", values[i] != null ? ((DateTime)values[i]).ToString() : "null");
+                        rowData += string.Format("{0}, ", Values[i] != null ? ((DateTime)Values[i]).ToString() : "null");
                         break;
                 }
             if (Fields.Count > 0) rowData = rowData.Remove(rowData.Length - 2, 2);
@@ -336,7 +336,7 @@ namespace DatabaseManagerLibrary
             T recordObject = new T();
             Type recordObjectType = recordObject.GetType();
             for (int i = 0; i < Fields.Count; i++)
-                recordObjectType.GetProperty(Fields.Fields[i].Name)?.SetValue(recordObject, values[i], null);
+                recordObjectType.GetProperty(Fields.Fields[i].Name)?.SetValue(recordObject, Values[i], null);
             return recordObject;
         }
     }

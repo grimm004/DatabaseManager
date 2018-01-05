@@ -29,7 +29,7 @@ namespace DatabaseManagerLibrary.BIN
                 Tables.Add(table);
                 return table;
             }
-            return null;
+            return GetTable(tableName);
         }
 
         public override string ToString()
@@ -48,18 +48,18 @@ namespace DatabaseManagerLibrary.BIN
     {
         public BINTableFields BINTableFields { get { return (BINTableFields)Fields; } }
 
-        public int recordsPerChunk = 10;
+        public readonly int recordsPerChunk = 10;
 
-        private bool isNewFile;
+        private bool IsNewFile { get; set; }
 
         private uint recordCount;
         public override uint RecordCount { get { return recordCount; } }
         public uint CurrentID { get; protected set; }
 
         public BINTable(string fileName, string name, BINTableFields fields) : base(fileName, name, fields)
-        { CurrentID = 0; isNewFile = true; MarkForUpdate(); }
+        { CurrentID = 0; IsNewFile = true; MarkForUpdate(); }
         public BINTable(string fileName) : base(fileName)
-        { isNewFile = false; }
+        { IsNewFile = false; }
         public override void LoadTable()
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
@@ -257,18 +257,18 @@ namespace DatabaseManagerLibrary.BIN
         {
             if (Edited)
             {
-                if (isNewFile) File.Create(FileName).Close();
+                if (IsNewFile) File.Create(FileName).Close();
                 Edited = false;
                 using (BinaryWriter writer = new BinaryWriter(File.Open(FileName, FileMode.Open)))
                 {
                     writer.BaseStream.Position = writer.BaseStream.Length;
-                    if (isNewFile || Fields.Edited) BINTableFields.WriteManifestBytes(writer);
+                    if (IsNewFile || Fields.Edited) BINTableFields.WriteManifestBytes(writer);
                     foreach (BINRecord record in Changes.AddedRecords) record.WriteFileBytes(writer, false);
                     long position = writer.BaseStream.Position;
                     foreach (BINRecord record in Changes.ChangedRecords) record.WriteFileBytes(writer, true);
                     foreach (BINRecord record in Changes.DeletedRecords) record.DeleteFileBytes(writer, 100);
                 }
-                isNewFile = false;
+                IsNewFile = false;
                 Changes = new ChangeCache();
                 UpdateProperties();
             }
@@ -381,8 +381,7 @@ namespace DatabaseManagerLibrary.BIN
         public uint Size { get; protected set; }
         public uint Offset { get; set; }
         public ushort VarCharSize { get { return (ushort)(Size - 2); } set { Size = value + (uint)2; } }
-
-        //public BINField() : base() { Size = 0; Offset = 0; }
+        
         public BINField(string name, Datatype dataType, ushort varCharSize = 0) : base(name, dataType)
         {
             switch (dataType)
@@ -404,7 +403,6 @@ namespace DatabaseManagerLibrary.BIN
             }
             Offset = 0;
         }
-        //public BINField(string name, Datatype dataType, uint size, uint offset) : base(name, dataType) { Size = size; Offset = offset; }
     }
 
     /// <summary>
@@ -416,7 +414,7 @@ namespace DatabaseManagerLibrary.BIN
         {
             this.ID = ID;
             this.Fields = fields;
-            this.values = values;
+            this.Values = values;
         }
         public BINRecord(byte[] data, BINTableFields fields, uint startPosition = 0)
         {
@@ -432,25 +430,25 @@ namespace DatabaseManagerLibrary.BIN
         public void LoadRecord(BinaryReader reader)
         {
             this.ID = reader.ReadUInt32();
-            this.values = new object[Fields.Count];
+            this.Values = new object[Fields.Count];
             for (int i = 0; i < Fields.Count; i++)
             {
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
                         double current = reader.ReadDouble();
-                        values[i] = current;
+                        Values[i] = current;
                         break;
                     case Datatype.Integer:
-                        values[i] = reader.ReadInt32();
+                        Values[i] = reader.ReadInt32();
                         break;
                     case Datatype.VarChar:
                         int varCharSize = reader.ReadInt16();
-                        values[i] = Encoding.UTF8.GetString(reader.ReadBytes(varCharSize));
+                        Values[i] = Encoding.UTF8.GetString(reader.ReadBytes(varCharSize));
                         reader.BaseStream.Position += ((BINField)Fields.Fields[i]).VarCharSize - varCharSize;
                         break;
                     case Datatype.DateTime:
-                        values[i] = DateTime.FromBinary(reader.ReadInt64());
+                        Values[i] = DateTime.FromBinary(reader.ReadInt64());
                         break;
                 }
             }
@@ -460,26 +458,26 @@ namespace DatabaseManagerLibrary.BIN
             uint position = startPosition;
             this.ID = BitConverter.ToUInt32(data, (int)position);
             position += sizeof(uint);
-            this.values = new object[Fields.Count];
+            this.Values = new object[Fields.Count];
             for (int i = 0; i < Fields.Count; i++)
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        values[i] = BitConverter.ToDouble(data, (int)position);
+                        Values[i] = BitConverter.ToDouble(data, (int)position);
                         position += sizeof(double);
                         break;
                     case Datatype.Integer:
-                        values[i] = BitConverter.ToInt32(data, (int)position);
+                        Values[i] = BitConverter.ToInt32(data, (int)position);
                         position += sizeof(int);
                         break;
                     case Datatype.VarChar:
                         int varCharSize = BitConverter.ToInt16(data, (int)position);
                         position += sizeof(ushort);
-                        values[i] = Encoding.UTF8.GetString(data, (int)position, varCharSize);
+                        Values[i] = Encoding.UTF8.GetString(data, (int)position, varCharSize);
                         position += ((BINField)Fields.Fields[i]).VarCharSize;
                         break;
                     case Datatype.DateTime:
-                        values[i] = DateTime.FromBinary(BitConverter.ToInt64(data, (int)position));
+                        Values[i] = DateTime.FromBinary(BitConverter.ToInt64(data, (int)position));
                         position += sizeof(long);
                         break;
                 }
@@ -493,14 +491,14 @@ namespace DatabaseManagerLibrary.BIN
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
-                        writer.Write(Convert.ToDouble(values[i]));
+                        writer.Write(Convert.ToDouble(Values[i]));
                         break;
                     case Datatype.Integer:
-                        writer.Write((int)values[i]);
+                        writer.Write((int)Values[i]);
                         break;
                     case Datatype.VarChar:
                         BINField field = (BINField)Fields.Fields[i];
-                        string value = (string)values[i];
+                        string value = (string)Values[i];
                         if (value.Length > field.VarCharSize) value = value.Substring(0, field.VarCharSize);
                         byte[] stringBytes = Encoding.UTF8.GetBytes(value);
                         writer.Write((ushort)stringBytes.Length);
@@ -509,7 +507,7 @@ namespace DatabaseManagerLibrary.BIN
                         for (uint j = offset; j < field.VarCharSize; j++) writer.Write((byte)0x00);
                         break;
                     case Datatype.DateTime:
-                        writer.Write(((DateTime)values[i]).Ticks);
+                        writer.Write(((DateTime)Values[i]).Ticks);
                         break;
                 }
         }
