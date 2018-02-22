@@ -10,25 +10,46 @@ namespace DatabaseManagerLibrary.BIN
     /// </summary>
     public class BINDatabase : Database
     {
+        /// <summary>
+        /// Constructor for the binary database
+        /// </summary>
+        /// <param name="name">The name of the database</param>
+        /// <param name="createIfNotExists">Create the database if it does not already exist.</param>
+        /// <param name="tableFileExtention">The file extention for tables.</param>
         public BINDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
             this.TableFileExtention = tableFileExtention;
             if (!Directory.Exists(name) && createIfNotExists) Directory.CreateDirectory(name);
+            // Optain a list of table file names
             string[] tableFiles = Directory.GetFiles(name, string.Format("*{0}", tableFileExtention));
             Tables = new List<Table>();
+            // Loop through each table file name and instanciate the table objects
             foreach (string tableFile in tableFiles) Tables.Add(new BINTable(tableFile));
-            this.Name = name;
+            Name = name;
         }
         
+        /// <summary>
+        /// Create a table.
+        /// </summary>
+        /// <param name="tableName">The name of the table</param>
+        /// <param name="fields">The table's field</param>
+        /// <param name="ifNotExists">Create the table only if it does not exist</param>
+        /// <returns>the newly created table</returns>
         public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
+            // Get the table file name
             string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
+            // If the file does not exist
             if ((File.Exists(fileName) && !ifNotExists) || !File.Exists(fileName))
             {
+                // Create the new table
                 Table table = new BINTable(fileName, tableName, (BINTableFields)fields);
+                // Add the table to the table list
                 Tables.Add(table);
+                // Return the newly created table
                 return table;
             }
+            // Return any table matching the file name
             return GetTable(tableName);
         }
 
@@ -56,10 +77,23 @@ namespace DatabaseManagerLibrary.BIN
         public override uint RecordCount { get { return recordCount; } }
         public uint CurrentID { get; protected set; }
 
+        /// <summary>
+        /// Initialize a new table instance
+        /// </summary>
+        /// <param name="fileName">The filename of the table</param>
+        /// <param name="name">The name of the table</param>
+        /// <param name="fields">The table's fields</param>
         public BINTable(string fileName, string name, BINTableFields fields) : base(fileName, name, fields)
         { CurrentID = 0; IsNewFile = true; MarkForUpdate(); }
+        /// <summary>
+        /// Initialize a new table instance
+        /// </summary>
+        /// <param name="fileName">The filename of the table</param>
         public BINTable(string fileName) : base(fileName)
         { IsNewFile = false; }
+        /// <summary>
+        /// Load the table's metadata and fields
+        /// </summary>
         public override void LoadTable()
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
@@ -70,11 +104,19 @@ namespace DatabaseManagerLibrary.BIN
             UpdateProperties();
         }
         
+        /// <summary>
+        /// Get a record by its ID
+        /// </summary>
+        /// <param name="ID">The ID of the record to get.</param>
+        /// <returns>the record corresponding to the ID</returns>
         public override Record GetRecordByID(uint ID)
         {
+            // Open a binary file reader
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
             {
+                // Calculate the position of the desired record in the file
                 uint pos = BINTableFields.Size + (BINTableFields.RecordSize * ID);
+                // If the target position does not exceed the length of the file
                 if (pos < reader.BaseStream.Length)
                 {
                     reader.BaseStream.Position = pos;
@@ -432,7 +474,6 @@ namespace DatabaseManagerLibrary.BIN
             this.ID = reader.ReadUInt32();
             this.Values = new object[Fields.Count];
             for (int i = 0; i < Fields.Count; i++)
-            {
                 switch (Fields.Fields[i].DataType)
                 {
                     case Datatype.Number:
@@ -451,7 +492,6 @@ namespace DatabaseManagerLibrary.BIN
                         Values[i] = DateTime.FromBinary(reader.ReadInt64());
                         break;
                 }
-            }
         }
         public void LoadRecord(byte[] data, uint startPosition = 0)
         {

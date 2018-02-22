@@ -130,7 +130,7 @@ namespace DatabaseManagerLibrary
             DeletedRecords = new List<Record>();
         }
     }
-
+    // Table myTable = new Table();
     public abstract class Table
     {
         public string Name { get; protected set; }
