@@ -119,12 +119,21 @@ namespace DatabaseManagerLibrary.BIN
                 // If the target position does not exceed the length of the file
                 if (pos < reader.BaseStream.Length)
                 {
+                    // Set the binary reader's base stream position to the calculated pos
                     reader.BaseStream.Position = pos;
+                    // Return a new record produced from this position
                     return new BINRecord(reader, BINTableFields);
                 }
             }
+            // If unsuccsessful, return null
             return null;
         }
+        /// <summary>
+        /// Get a record based on a condition
+        /// </summary>
+        /// <param name="conditionField">The field to check the condition with</param>
+        /// <param name="conditionValue">The value to compare as the condition</param>
+        /// <returns>the first record matching the condition</returns>
         public override Record GetRecord(string conditionField, object conditionValue)
         {
             using (BinaryReader reader = new BinaryReader(File.Open(FileName, FileMode.Open)))
@@ -163,92 +172,164 @@ namespace DatabaseManagerLibrary.BIN
                 return null;
             }
         }
+        /// <summary>
+        /// Get all records
+        /// </summary>
+        /// <returns>all records in the table</returns>
         public override Record[] GetRecords()
         {
+            // Create a list of records to store the results in
             List<Record> results = new List<Record>();
 
-            using (var file = File.OpenRead(FileName))
+            // Open the table's file
+            using (FileStream file = File.OpenRead(FileName))
             {
+                // Calculate the chunk size
                 long chunkSize = recordsPerChunk * BINTableFields.RecordSize;
+                // Set the file position to the start of the records
                 file.Position = BINTableFields.Size;
+                // Define a variable to store the number of bytes read per chunk
                 int bytesRead;
+                // Define a buffer to store the chunk data in
                 var buffer = new byte[chunkSize];
-                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0) AnalyseChunk(ref results, buffer);
+                // While there is data to be read, read it into the buffer
+                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
+                    // Analyse the chunk to fetch the records
+                    AnalyseChunk(ref results, buffer);
             }
 
             return results.ToArray();
         }
+        /// <summary>
+        /// Get all records matching a condition
+        /// </summary>
+        /// <param name="conditionField">The field to check for the condition in</param>
+        /// <param name="conditionValue">The condition value to compare against</param>
+        /// <returns>all records matching the condtion</returns>
         public override Record[] GetRecords(string conditionField, object conditionValue)
         {
+            // Create a list of records (to store the matching records)
             List<Record> results = new List<Record>();
 
-            using (var file = File.OpenRead(FileName))
+            // Open a new file stream for the table's file
+            using (FileStream file = File.OpenRead(FileName))
             {
+                // Calculate the chunk size
                 long chunkSize = recordsPerChunk * BINTableFields.RecordSize;
+                // Set the position to the file to the start of the records
                 file.Position = BINTableFields.Size;
+                // Define a variable to store the number of bytes read per chunk
                 int bytesRead;
+                // Define a cunk buffer
                 var buffer = new byte[chunkSize];
-                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0) AnalyseChunk(ref results, buffer, conditionField, conditionValue);
+                // While there is data to be read from the file, read it into the chunk buffer
+                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
+                    // Analyse the cunk for records
+                    AnalyseChunk(ref results, buffer, conditionField, conditionValue);
             }
 
             return results.ToArray();
         }
+        /// <summary>
+        /// Search through all the records
+        /// </summary>
+        /// <param name="callback">The callback to parse each record to when loaded.</param>
         public override void SearchRecords(Action<Record> callback)
         {
-            using (var file = File.OpenRead(FileName))
+            // Open the table file
+            using (FileStream file = File.OpenRead(FileName))
             {
+                // Calculate the chunk size
                 long chunkSize = recordsPerChunk * BINTableFields.RecordSize;
+                // Set the file position to the start of the records
                 file.Position = BINTableFields.Size;
+                // Define a variable to store the number of bytes read from the file every chunk
                 int bytesRead;
+                // Define a buffer to store the cunk
                 var buffer = new byte[chunkSize];
-                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0) AnalyseChunk(buffer, callback);
+                // While there is data to be read from the file, read it to the chunk buffer
+                while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
+                    // Analyse the current chunk of data
+                    AnalyseChunk(buffer, callback);
             }
         }
+        /// <summary>
+        /// Conditionally analyse a chunk of record data
+        /// </summary>
+        /// <param name="resultList">A reference to the record results list</param>
+        /// <param name="chunk">The cunk of data to analyse</param>
+        /// <param name="conditionField">The field to check the condition against</param>
+        /// <param name="conditionValue">The condition value to check for</param>
         private void AnalyseChunk(ref List<Record> resultList, byte[] chunk, string conditionField, object conditionValue)
         {
+            // Initialise a chunk position variable to zero
             uint position = 0;
+            // Get the field ID of the conditional field
             int fieldID = BINTableFields.GetFieldID(conditionField);
+            // Calculate the field byte offset of the conditional field
             uint fieldOffset = sizeof(uint) + BINTableFields.BINFields[fieldID].Offset;
+            // Loop through each record in the data chunk
             for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize)
             {
+                // Set the position in the chunk to the current loop index plus the pre-calculated field offset
                 position = i + fieldOffset;
+                // Define a variable to store if the record is a valid match to the condition
                 bool valid = false;
+                // Switch through the datatype of the conditional field
                 switch (BINTableFields.Fields[fieldID].DataType)
                 {
                     case Datatype.Number:
+                        // Convert the data to a double and compare it to the condition value
                         valid = Convert.ToDouble(conditionValue) == BitConverter.ToDouble(chunk, (int)position);
                         position += BINTableFields.BINFields[fieldID].Size;
                         break;
                     case Datatype.Integer:
+                        // Convert the field data to an integer and compare it to the condition value
                         valid = (int)conditionValue == BitConverter.ToInt32(chunk, (int)position);
                         position += sizeof(int);
                         break;
                     case Datatype.VarChar:
+                        // Convert the field data to a string and compare it to the condition value
                         int stringSize = BitConverter.ToInt16(chunk, (int)position);
                         position += sizeof(ushort);
                         valid = (string)conditionValue == Encoding.UTF8.GetString(chunk, (int)position, stringSize);
                         position += BINTableFields.BINFields[fieldID].Size;
                         break;
                     case Datatype.DateTime:
+                        // Convert the field data to a DateTime instance and compare it to the condition value
                         valid = (DateTime)conditionValue == DateTime.FromBinary(BitConverter.ToInt64(chunk, (int)position));
                         position += sizeof(long);
                         break;
                 }
 
+                // If the condition value matches the data in the desired field
                 if (valid)
                 {
+                    // Re-set the position to the beginning of the record data
                     position = i;
+                    // Read the record into memory and add it to the results list
                     resultList.Add(new BINRecord(chunk, BINTableFields, position));
                 }
             }
         }
+        /// <summary>
+        /// Load all records for a chunk of data.
+        /// </summary>
+        /// <param name="resultList">A reference to the record list to add the loaded records to.</param>
+        /// <param name="chunk">The chunk to read through</param>
         private void AnalyseChunk(ref List<Record> resultList, byte[] chunk)
         {
-            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize) resultList.Add(new BINRecord(chunk, BINTableFields, i));
+            // Loop through each record position in the record data chunk
+            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize)
+                // Create a record from this position in the chunk and add it to the results list
+                resultList.Add(new BINRecord(chunk, BINTableFields, i));
         }
         private void AnalyseChunk(byte[] chunk, Action<Record> callback)
         {
-            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize) callback?.Invoke(new BINRecord(chunk, BINTableFields, i));
+            // Loop through each record position in the record data chunk
+            for (uint i = 0; i < chunk.Length; i += BINTableFields.RecordSize)
+                // Create a record from this position in the chunk and send it to the desired callback
+                callback?.Invoke(new BINRecord(chunk, BINTableFields, i));
         }
 
         public override Record AddRecord(object[] values, bool ifNotExists = false, string conditionField = null, object conditionValue = null)

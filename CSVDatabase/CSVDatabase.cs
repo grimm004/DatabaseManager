@@ -36,11 +36,13 @@ namespace DatabaseManagerLibrary.CSV
             return string.Format("Database('{0}', {1} {2} ({3}))", Name, TableCount, (TableCount == 1) ? "table" : "tables", tableList);
         }
 
-        public BINDatabase ToBINDatabase(string name, List<ushort[]> varCharSizes, List<uint> recordBufferSizes, bool createIfNotExists = true, string tableFileExtention = ".table", Action<Table, double> updateCommand = null)
+        public BINDatabase ToBINDatabase(string name, List<ushort[]> varCharSizes, List<uint> recordBufferSizes, bool createIfNotExists = true,
+            string tableFileExtention = ".table", Action<Table, double> updateCommand = null)
         {
             BINDatabase newDatabase = new BINDatabase(name, createIfNotExists, tableFileExtention);
             for (int i = 0; i < TableCount; i++)
-                newDatabase.AddTable(((CSVTable)Tables[i]).ToBINTable(string.Format("{0}\\{1}{2}", newDatabase.Name, Tables[i].Name, tableFileExtention), Tables[i].Name, varCharSizes[i], recordBufferSizes[i], updateCommand));
+                newDatabase.AddTable(((CSVTable)Tables[i]).ToBINTable(string.Format("{0}\\{1}{2}", newDatabase.Name,
+                    Tables[i].Name, tableFileExtention), Tables[i].Name, varCharSizes[i], recordBufferSizes[i], updateCommand));
             return newDatabase;
         }
     }
@@ -241,7 +243,7 @@ namespace DatabaseManagerLibrary.CSV
         public BINTable ToBINTable(string fileName, string name, ushort[] varCharSizes, uint recordBufferSize = 100, Action<Table, double> updateCommand = null)
         {
             BINTableFields fields = ((CSVTableFields)Fields).ToBINTableFields(varCharSizes);
-             BINTable newTable = new BINTable(fileName, name, fields);
+            BINTable newTable = new BINTable(fileName, name, fields);
             List<Record> records = new List<Record>();
             string currentLine;
             uint currentRecordId = 0;
