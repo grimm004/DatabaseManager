@@ -10,6 +10,12 @@ namespace DatabaseManagerLibrary.BIN
     /// </summary>
     public class BINDatabase : Database
     {
+        /// <summary>
+        /// Initialise the binary database
+        /// </summary>
+        /// <param name="name">The name of the database</param>
+        /// <param name="createIfNotExists">Create the database if it does not exist</param>
+        /// <param name="tableFileExtention">The table file extention</param>
         public BINDatabase(string name, bool createIfNotExists = true, string tableFileExtention = ".table")
         {
             this.TableFileExtention = tableFileExtention;
@@ -20,6 +26,13 @@ namespace DatabaseManagerLibrary.BIN
             this.Name = name;
         }
         
+        /// <summary>
+        /// Create a table
+        /// </summary>
+        /// <param name="tableName">The name of the table to create</param>
+        /// <param name="fields">The fields for the table</param>
+        /// <param name="ifNotExists">Create the table if it does not exist</param>
+        /// <returns>the newly created table</returns>
         public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
             string fileName = string.Format("{0}\\{1}{2}", Name, tableName, TableFileExtention);
