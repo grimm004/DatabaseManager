@@ -536,8 +536,8 @@ namespace DatabaseManagerLibrary.BIN
         public BINRecord(object[] values, uint ID, BINTableFields fields)
         {
             this.ID = ID;
-            this.Fields = fields;
-            this.Values = values;
+            Fields = fields;
+            Values = values;
         }
         public BINRecord(byte[] data, BINTableFields fields, uint startPosition = 0)
         {
