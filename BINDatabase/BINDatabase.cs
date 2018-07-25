@@ -29,11 +29,11 @@ namespace DatabaseManagerLibrary.BIN
         }
         
         /// <summary>
-        /// Create a table.
+        /// Create a table
         /// </summary>
-        /// <param name="tableName">The name of the table</param>
-        /// <param name="fields">The table's field</param>
-        /// <param name="ifNotExists">Create the table only if it does not exist</param>
+        /// <param name="tableName">The name of the table to create</param>
+        /// <param name="fields">The fields for the table</param>
+        /// <param name="ifNotExists">Create the table if it does not exist</param>
         /// <returns>the newly created table</returns>
         public override Table CreateTable(string tableName, TableFields fields, bool ifNotExists = true)
         {
